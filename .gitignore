@@ -1,0 +1,11 @@
+target/
+node_modules/
+dist/
+models/
+data/
+*.gguf
+*.safetensors
+.venv/
+__pycache__/
+.DS_Store
+.env
