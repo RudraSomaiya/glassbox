@@ -1,6 +1,7 @@
 //! OpenAI-compatible HTTP API. Handlers tokenize and stream; one engine thread
 //! owns the model and runs the scheduler.
 
+use crate::json_schema::{JsonConstraint, Trie};
 use crate::scheduler::{Config, Constraint, Event, Finish, Metrics, Request, Scheduler, StepRecord};
 use axum::extract::State;
 use axum::http::StatusCode;
@@ -38,6 +39,7 @@ pub struct AppState {
     pub model_name: String,
     pub snapshot: Arc<Mutex<Snapshot>>,
     pub vocab: Arc<Vec<Vec<u8>>>,
+    pub trie: Arc<Trie>,
 }
 
 /// The engine thread: waits for work when idle, otherwise steps continuously.
@@ -175,25 +177,12 @@ impl Detok {
     }
 }
 
-type ConstraintFactory = fn(&Value, &Tokenizer) -> Result<Box<dyn Constraint>, String>;
-
-/// Set by the constrained-decoding module; `None` means `response_format` is rejected.
-pub static JSON_SCHEMA: std::sync::OnceLock<ConstraintFactory> = std::sync::OnceLock::new();
-
 async fn generate(st: AppState, prompt: Vec<u32>, p: GenParams, chat: bool) -> Response {
     let constraint = match p.response_format.as_ref().filter(|f| f["type"] == "json_schema") {
         None => None,
-        Some(f) => match JSON_SCHEMA.get() {
-            None => {
-                return error(
-                    StatusCode::BAD_REQUEST,
-                    "response_format json_schema is not supported by this build",
-                )
-            }
-            Some(make) => match make(&f["json_schema"]["schema"], &st.tok) {
-                Ok(c) => Some(c),
-                Err(e) => return error(StatusCode::BAD_REQUEST, format!("unsupported schema: {e}")),
-            },
+        Some(f) => match JsonConstraint::new(&f["json_schema"]["schema"], st.trie.clone()) {
+            Ok(c) => Some(Box::new(c) as Box<dyn Constraint>),
+            Err(e) => return error(StatusCode::BAD_REQUEST, format!("unsupported schema: {e}")),
         },
     };
     let (sink, mut rx) = tmpsc::unbounded_channel();

@@ -288,11 +288,12 @@ fn serve(args: &[String]) {
     let mut rng = glassbox_core::sampler::Rng::new(7);
     let mut rand_tokens = |n: usize| (0..n).map(|_| (rng.next_f32() * vocab) as u32).collect::<Vec<u32>>();
     let n = 48;
-    // Chat-like lengths: prompts 64-448 tokens, replies 16-128.
+    // Chat-like lengths (ShareGPT-style: replies longer than prompts):
+    // prompts 32-320 tokens, replies 32-256.
     let mut lens = glassbox_core::sampler::Rng::new(9);
     let mixed = Load {
-        prompts: (0..n).map(|_| rand_tokens(64 + (lens.next_f32() * 384.0) as usize)).collect(),
-        outputs: (0..n).map(|_| 16 + (lens.next_f32() * 112.0) as usize).collect(),
+        prompts: (0..n).map(|_| rand_tokens(32 + (lens.next_f32() * 288.0) as usize)).collect(),
+        outputs: (0..n).map(|_| 32 + (lens.next_f32() * 224.0) as usize).collect(),
     };
     // Every request starts with the same 384-token system prompt.
     let system = rand_tokens(384);
@@ -309,7 +310,7 @@ fn serve(args: &[String]) {
     let batched = Config { token_budget: 512, max_seqs: 32, num_blocks: 4096, prefix_caching: false };
     let single = Config { max_seqs: 1, ..batched.clone() };
     let mut runs = Vec::new();
-    for rate in [1.0, 2.0, 4.0, 8.0] {
+    for rate in [0.5, 1.0, 2.0, 4.0] {
         for (name, cfg) in [("continuous batching", &batched), ("one at a time", &single)] {
             let r = serve_run(&model, cfg.clone(), &mixed, rate);
             eprintln!("{name:20} {rate:4} req/s: {:.0} tok/s, TTFT p50 {:.2}s p99 {:.2}s",
@@ -328,7 +329,7 @@ fn serve(args: &[String]) {
     }
     write(arg(args, "--out"), &json!({"model": dir, "dtype": format!("{:?}", model.layers[0].wqkv.dtype()),
         "threads": pool::threads(), "workloads": {
-            "mixed": "48 requests, prompts 64-448 random tokens, replies 16-128 tokens, greedy, Poisson arrivals",
+            "mixed": "48 requests, prompts 32-320 random tokens, replies 32-256 tokens, greedy, Poisson arrivals",
             "shared system prompt": "48 requests, one 384-token system prompt + 16-64 token user part, replies 16-64 tokens"},
         "runs": runs, "meta": meta()}));
 }
