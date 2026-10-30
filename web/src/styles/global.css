@@ -147,6 +147,7 @@ button {
   color: var(--ground);
   font-weight: 700;
   font-variation-settings: 'wdth' 110;
+  text-decoration: none;
   cursor: pointer;
   transition:
     transform var(--quick) var(--ease),
@@ -228,6 +229,7 @@ button {
 
 .page {
   padding: 0 var(--gutter) 120px;
+  overflow-x: clip;
 }
 
 @media (prefers-reduced-motion: reduce) {

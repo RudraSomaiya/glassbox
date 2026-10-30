@@ -1,6 +1,6 @@
 // Messages between the page and the engine worker.
 
-export type Alt = { id: number; p: number; text: string }
+export type Alt = { id: number; p: number; text: string; logit?: number }
 
 export type Token = {
   index: number
@@ -47,6 +47,7 @@ export type ToWorker =
   | { type: 'stop' }
   | { type: 'inspect'; pos: number }
   | { type: 'cache' }
+  | { type: 'dist'; k: number }
 
 export type FromWorker =
   | { type: 'progress'; label: string; loaded: number; total: number; cached: boolean }
@@ -58,4 +59,5 @@ export type FromWorker =
   | { type: 'done'; reason: 'eos' | 'length' | 'max' | 'stopped' }
   | { type: 'inspect'; pos: number; data: Inspect }
   | { type: 'cache'; data: CacheState }
+  | { type: 'dist'; top: Alt[] }
   | { type: 'error'; message: string }

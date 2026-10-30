@@ -13,7 +13,7 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::{mpsc as tmpsc, oneshot};
 use tokio_stream::StreamExt;
 
@@ -318,7 +318,6 @@ struct TraceItem {
 /// and return what the scheduler did plus every request's tokens.
 async fn trace(State(st): State<AppState>, Json(req): Json<TraceRequest>) -> Response {
     let _ = st.tx.send(Cmd::StartTrace);
-    let t0 = Instant::now();
     let mut tasks = Vec::new();
     for item in req.requests {
         let st = st.clone();
@@ -341,13 +340,13 @@ async fn trace(State(st): State<AppState>, Json(req): Json<TraceRequest>) -> Res
                 constraint: None,
             };
             let (id_tx, id_rx) = oneshot::channel();
-            let arrival = t0.elapsed().as_secs_f64() * 1e3;
+            let arrival = crate::scheduler::unix_ms();
             let _ = st.tx.send(Cmd::Submit(r, id_tx));
             let id = id_rx.await.unwrap_or(0);
             let mut tokens = Vec::new();
             while let Some(Event::Token(t)) = rx.recv().await {
                 tokens.push(json!({"id": t, "text": String::from_utf8_lossy(&st.vocab[t as usize]),
-                                   "t_ms": t0.elapsed().as_secs_f64() * 1e3}));
+                                   "t_ms": crate::scheduler::unix_ms()}));
             }
             json!({"id": id, "arrival_ms": arrival, "prompt_tokens": n_prompt, "tokens": tokens})
         }));

@@ -1,0 +1,46 @@
+.mem {
+  margin: 0;
+  display: grid;
+  gap: 14px;
+}
+.mem figcaption {
+  max-width: 60ch;
+}
+.mem__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(22px, 1fr));
+  gap: 3px;
+}
+.mem__block {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  background: var(--sunk);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.mem__fill {
+  position: absolute;
+  inset: 0;
+  background: var(--film);
+  transform-origin: bottom;
+  transform: scaleY(var(--f));
+  transition: transform var(--standard) var(--ease);
+}
+.mem__bars {
+  display: grid;
+  gap: 4px;
+  font-size: var(--step--1);
+  font-weight: 600;
+}
+.mem__bar {
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+.mem__bar--paged {
+  width: max(9em, calc(var(--f) * 100%));
+  background: var(--film);
+  color: var(--film-ink);
+}
+.mem__bar--naive {
+  background: var(--sunk);
+}

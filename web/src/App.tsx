@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Landing } from './pages/Landing'
 import { Playground } from './pages/Playground'
+import { Explainer } from './pages/Explainer'
+import { Benchmarks } from './pages/Benchmarks'
 
 const ROUTES: Record<string, { title: string; page: () => React.ReactNode }> = {
   '': { title: 'Glassbox', page: Landing },
   play: { title: 'Playground', page: Playground },
+  explain: { title: 'How it works', page: Explainer },
+  bench: { title: 'Benchmarks', page: Benchmarks },
 }
 
 function route(): string {
@@ -73,6 +77,12 @@ export function App() {
         <nav className="bar__links" aria-label="Main">
           <a href="#/play" aria-current={r === 'play' ? 'page' : undefined}>
             Playground
+          </a>
+          <a href="#/explain" aria-current={r === 'explain' ? 'page' : undefined}>
+            How it works
+          </a>
+          <a href="#/bench" aria-current={r === 'bench' ? 'page' : undefined}>
+            Benchmarks
           </a>
           <a href={GITHUB}>Source</a>
         </nav>

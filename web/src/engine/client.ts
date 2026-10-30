@@ -26,6 +26,7 @@ export type EngineState = {
   error: string | null
   inspect: { pos: number; data: Inspect } | null
   cache: CacheState | null
+  dist: Alt[] | null
 }
 
 let state: EngineState = {
@@ -40,6 +41,7 @@ let state: EngineState = {
   error: null,
   inspect: null,
   cache: null,
+  dist: null,
 }
 const listeners = new Set<() => void>()
 let worker: Worker | null = null
@@ -88,12 +90,16 @@ function onMessage(e: MessageEvent<FromWorker>) {
     }
     case 'done':
       set({ status: 'ready' })
+      send({ type: 'dist', k: 40 })
       break
     case 'inspect':
       set({ inspect: { pos: m.pos, data: m.data } })
       break
     case 'cache':
       set({ cache: m.data })
+      break
+    case 'dist':
+      set({ dist: m.top })
       break
     case 'error':
       set({ status: 'error', error: m.message })

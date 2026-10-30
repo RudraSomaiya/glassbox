@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { Inspect } from '../engine/protocol'
-import { Glyphs, pct } from './FilmStrip'
+import { density, Glyphs, pct } from './FilmStrip'
 import './inspector.css'
 
 export type Tok = { id: number; text: string }
@@ -35,7 +35,7 @@ export function Lens({ data, chosen, vocabText }: { data: Inspect; chosen: numbe
           return (
             <li key={i} className={'lens__row' + (hit ? ' lens__row--hit' : '') + (i === decided ? ' lens__row--decided' : '')}>
               <span className="lens__layer">{i + 1}</span>
-              <span className="lens__tok" style={{ '--p': p } as React.CSSProperties}>
+              <span className={'lens__tok' + (density(p) > 0.3 ? ' lens__tok--dense' : '')} style={{ '--d': density(p) } as React.CSSProperties}>
                 <Glyphs text={vocabText(id)} />
               </span>
               <span className="lens__p">{pct(p)}</span>

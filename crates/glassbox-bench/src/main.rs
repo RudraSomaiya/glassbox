@@ -309,7 +309,7 @@ fn serve(args: &[String]) {
     let batched = Config { token_budget: 512, max_seqs: 32, num_blocks: 4096, prefix_caching: false };
     let single = Config { max_seqs: 1, ..batched.clone() };
     let mut runs = Vec::new();
-    for rate in [0.5, 1.0, 2.0, 4.0, 8.0] {
+    for rate in [1.0, 2.0, 4.0, 8.0] {
         for (name, cfg) in [("continuous batching", &batched), ("one at a time", &single)] {
             let r = serve_run(&model, cfg.clone(), &mixed, rate);
             eprintln!("{name:20} {rate:4} req/s: {:.0} tok/s, TTFT p50 {:.2}s p99 {:.2}s",

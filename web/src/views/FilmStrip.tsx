@@ -21,6 +21,14 @@ export function Glyphs({ text }: { text: string }) {
   )
 }
 
+/**
+ * Optical density of a frame that lets through fraction p of the light:
+ * D = log10(1/p), scaled so D = 3 (p = 0.001) is fully dense.
+ */
+export function density(p: number): number {
+  return Math.min(1, Math.max(0, -Math.log10(Math.max(p, 1e-6)) / 3))
+}
+
 export function pct(p: number): string {
   if (p >= 0.995) return '>99%'
   if (p < 0.001) return '<0.1%'
@@ -82,8 +90,8 @@ export function FilmStrip({ tokens, onFork, onInspect, selected, label, live }: 
           <div role="listitem" key={t.index} className="strip__cell">
             <button
               type="button"
-              className={'frame' + (t.p < 0.4 ? ' frame--dense' : '') + (selected === t.index ? ' frame--selected' : '')}
-              style={{ '--p': t.p } as React.CSSProperties}
+              className={'frame' + (density(t.p) > 0.3 ? ' frame--dense' : '') + (selected === t.index ? ' frame--selected' : '')}
+              style={{ '--d': density(t.p) } as React.CSSProperties}
               data-index={t.index}
               data-n={t.index % 5 === 0 ? t.index : undefined}
               aria-label={`${spoken(t.text)}, ${pct(t.p)}`}

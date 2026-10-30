@@ -2,8 +2,9 @@
    of frames. Each line is exactly --row tall so the sprocket tile lines up. */
 .strip-wrap {
   position: relative;
-  --row: 72px;
-  --band: 14px;
+  --row: 80px;
+  --band: 20px;
+  --hole: 6px; /* sprocket centre, from the strip's outer edge */
 }
 
 .strip {
@@ -20,8 +21,8 @@
     16px var(--row),
     16px var(--row);
   background-position:
-    0 calc(var(--band) / 2 - var(--row) / 2),
-    0 calc(var(--row) - var(--band) / 2 - var(--row) / 2);
+    0 calc(var(--hole) - var(--row) / 2),
+    0 calc(var(--row) - var(--hole) - var(--row) / 2);
   background-repeat: repeat;
 }
 
@@ -40,8 +41,8 @@
   padding: 0 7px;
   border: 0;
   border-radius: 3px;
-  /* Density: clear when the model was sure, toward D-max when it wasn't. */
-  background: color-mix(in srgb, var(--film), rgb(var(--film-dense)) calc((1 - var(--p)) * 88%));
+  /* Optical density --d = log10(1/p) / 3: clear when the model was sure. */
+  background: color-mix(in srgb, var(--film), rgb(var(--film-dense)) calc(var(--d) * 90%));
   color: var(--film-ink);
   font-size: 1.125rem;
   font-weight: 500;
@@ -69,9 +70,9 @@
   content: attr(data-n);
   position: absolute;
   left: 2px;
-  bottom: calc(var(--band) * -1 - 1px);
+  bottom: -14px;
   font-size: 12px;
-  line-height: var(--band);
+  line-height: 12px;
   font-weight: 600;
   font-variation-settings: 'wdth' 70;
   color: var(--film-ink);
@@ -228,8 +229,8 @@
 
 @media (max-width: 640px) {
   .strip-wrap {
-    --row: 64px;
-    --band: 12px;
+    --row: 72px;
+    --band: 18px;
   }
   .frame {
     font-size: 1rem;

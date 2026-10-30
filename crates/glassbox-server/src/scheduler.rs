@@ -93,6 +93,11 @@ impl Seq {
     }
 }
 
+/// Wall-clock milliseconds, so step records and request arrivals share a time base.
+pub fn unix_ms() -> f64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0.0, |d| d.as_secs_f64() * 1e3)
+}
+
 /// What one step did, for the scheduler view's replay trace.
 #[derive(Serialize, Clone, Debug)]
 pub struct StepRecord {
@@ -403,7 +408,7 @@ impl<'m> Scheduler<'m> {
         let Some(trace) = self.trace.as_mut() else { return };
         trace.push(StepRecord {
             step: self.metrics.steps,
-            t_ms: (t0 - self.started).as_secs_f64() * 1e3,
+            t_ms: unix_ms() - t0.elapsed().as_secs_f64() * 1e3,
             ms: t0.elapsed().as_secs_f64() * 1e3,
             batch: batch.to_vec(),
             preempted,
@@ -411,6 +416,10 @@ impl<'m> Scheduler<'m> {
             waiting: self.waiting.len(),
             kv_used: self.cache.used_blocks(),
         });
+    }
+
+    pub fn uptime(&self) -> f64 {
+        self.started.elapsed().as_secs_f64()
     }
 
     pub fn kv_utilization(&self) -> f64 {

@@ -1,15 +1,32 @@
-import { useState } from 'react'
-import { engine, useEngine } from '../engine/client'
+import { useEffect, useState } from 'react'
+import { CONTEXT, engine, useEngine } from '../engine/client'
 import type { Sampler } from '../engine/protocol'
 import { FilmStrip } from '../views/FilmStrip'
+import { Attention, Lens } from '../views/Inspector'
 import { LoadButton } from '../views/LoadButton'
+import { Memory } from '../views/Memory'
+import { Sampling } from '../views/Sampling'
 import './playground.css'
+
+const VIEWS = ['Layers', 'Attention', 'Memory', 'Sampling'] as const
+type View = (typeof VIEWS)[number]
 
 export function Playground() {
   const s = useEngine()
   const [prompt, setPrompt] = useState('Write a short poem about light passing through glass.')
   const [sampler, setSampler] = useState<Sampler>({ temperature: 0.7, top_k: 40, top_p: 0.95, min_p: 0, seed: 1 })
+  const [view, setView] = useState<View>('Layers')
+  const [selected, setSelected] = useState<number | null>(null)
   const ready = s.status === 'ready' || s.status === 'running'
+  const all = [...s.prompt, ...s.tokens]
+  const textOf = (id: number) => all.find((t) => t.id === id)?.text ?? s.tokens.flatMap((t) => t.alts).find((a) => a.id === id)?.text ?? `#${id}`
+
+  // Inspect the step that produced the selected token: the forward pass at the token before it.
+  useEffect(() => {
+    if (selected !== null && selected > 0 && s.status === 'ready') engine.inspect(selected - 1)
+  }, [selected, s.status])
+  const chosen = selected === null ? null : (s.tokens.find((t) => t.index === selected) ?? null)
+  const inspected = s.inspect && selected !== null && s.inspect.pos === selected - 1 ? s.inspect.data : null
 
   return (
     <div className="page play">
@@ -18,25 +35,13 @@ export function Playground() {
         className="play__form"
         onSubmit={(e) => {
           e.preventDefault()
+          setSelected(null)
           if (s.status === 'ready') engine.start(prompt, sampler, 200)
         }}
       >
         <label className="field">
           <span>Your message</span>
           <textarea value={prompt} rows={2} onChange={(e) => setPrompt(e.target.value)} />
-        </label>
-        <label className="field field--range">
-          <span>
-            Temperature <output>{sampler.temperature.toFixed(2)}</output>
-          </span>
-          <input
-            type="range"
-            min={0}
-            max={1.5}
-            step={0.05}
-            value={sampler.temperature}
-            onChange={(e) => setSampler({ ...sampler, temperature: Number(e.target.value) })}
-          />
         </label>
         <div className="play__actions">
           {ready ? (
@@ -64,21 +69,72 @@ export function Playground() {
             tokens={s.tokens}
             label="Generated tokens"
             live={s.status === 'running'}
-            onFork={(i, alt) => engine.fork(i, alt, sampler, 160)}
+            selected={selected}
+            onInspect={(i) => setSelected(i)}
+            onFork={(i, alt) => {
+              setSelected(null)
+              engine.fork(i, alt, sampler, 160)
+            }}
           />
         ) : (
           <p className="play__empty">
             {ready
               ? 'Write a message and press Write. Each token lands as a frame on the strip.'
-              : 'Load the model to start. It runs entirely on your machine.'}
+              : 'Load the model to start. It runs entirely on your machine; nothing is sent anywhere.'}
           </p>
         )}
         <p className="play__stats">
           {s.prefill && `Read ${s.prefill.tokens} prompt tokens in ${Math.round(s.prefill.ms)} ms. `}
           {s.tokPerSec > 0 && `Writing ${s.tokPerSec.toFixed(1)} tokens a second. `}
-          {s.branches.length > 0 && `${s.branches.length} fork${s.branches.length > 1 ? 's' : ''} so far.`}
+          {s.branches.length > 0 && `${s.branches.length} fork${s.branches.length > 1 ? 's' : ''} so far. `}
+          {s.tokens.length > 0 && selected === null && 'Click a frame to look inside the step that wrote it.'}
         </p>
       </section>
+
+      {s.info && (
+        <section className="play__bench" aria-labelledby="views-title">
+          <h2 id="views-title" className="play__h2">
+            Inside the model
+          </h2>
+          <div className="tabs" role="tablist" aria-label="Views">
+            {VIEWS.map((v) => (
+              <button key={v} type="button" role="tab" aria-selected={v === view} className="tab" onClick={() => setView(v)}>
+                {v}
+              </button>
+            ))}
+          </div>
+          <div className="play__panel" role="tabpanel" aria-label={view}>
+            {(view === 'Layers' || view === 'Attention') &&
+              (inspected && chosen ? (
+                view === 'Layers' ? (
+                  <Lens data={inspected} chosen={chosen.id} vocabText={textOf} />
+                ) : (
+                  <Attention data={inspected} tokens={all} query={selected! - 1} />
+                )
+              ) : (
+                <p className="play__empty">
+                  {selected === null
+                    ? 'Pick a frame on the strip to see how the model arrived at it.'
+                    : s.status === 'running'
+                      ? 'Stop or wait for the writing to finish, then the model can be traced.'
+                      : 'Tracing that step…'}
+                </p>
+              ))}
+            {view === 'Memory' &&
+              (s.cache ? (
+                <Memory cache={s.cache} bytesPerToken={s.info.kv_bytes_per_token} context={CONTEXT} />
+              ) : (
+                <p className="play__empty">The cache fills as the model writes.</p>
+              ))}
+            {view === 'Sampling' &&
+              (s.dist ? (
+                <Sampling dist={s.dist} sampler={sampler} onChange={setSampler} />
+              ) : (
+                <p className="play__empty">Write something first; the dials act on what the model would say next.</p>
+              ))}
+          </div>
+        </section>
+      )}
     </div>
   )
 }

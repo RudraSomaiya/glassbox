@@ -1,0 +1,231 @@
+.bench {
+  display: grid;
+  gap: 72px;
+  padding-top: clamp(24px, 6vw, 72px);
+}
+.bench__head {
+  display: grid;
+  gap: 20px;
+}
+.bench h1 {
+  font-size: var(--step-3);
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+  font-variation-settings: 'wdth' 125;
+  font-weight: 900;
+}
+.bench h2 {
+  font-size: var(--step-2);
+  font-variation-settings: 'wdth' 115;
+  letter-spacing: -0.02em;
+  margin-bottom: 24px;
+}
+.bench h3 {
+  font-size: var(--step-1);
+  font-variation-settings: 'wdth' 105;
+}
+.bench__lede {
+  font-size: var(--step-1);
+  line-height: 1.4;
+  max-width: 60ch;
+}
+.bench__warn {
+  max-width: 68ch;
+  padding: 14px 18px;
+  background: var(--sunk);
+}
+.bench section {
+  display: grid;
+  gap: 40px;
+}
+.bench__read {
+  max-width: 64ch;
+}
+.bench__big strong {
+  font-size: var(--step-3);
+  font-weight: 900;
+  font-variation-settings: 'wdth' 125;
+  margin-right: 12px;
+}
+.bench code {
+  font-size: 0.9em;
+}
+
+.chart {
+  margin: 0;
+  display: grid;
+  gap: 16px;
+}
+.chart figcaption {
+  display: grid;
+  gap: 8px;
+}
+.chart svg {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.multiples {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 24px 40px;
+}
+.grid {
+  stroke: var(--sunk);
+  stroke-width: 1;
+}
+.tick,
+.val {
+  fill: var(--ink-2);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.val {
+  fill: var(--ink);
+  font-weight: 600;
+}
+.panel {
+  fill: var(--ink);
+  font-weight: 700;
+  font-size: 14px;
+}
+.legend {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  margin: 0;
+  padding: 0;
+  font-size: var(--step--1);
+}
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sw {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+/* Categorical slots, validated for colour-vision deficiency in both themes. */
+:root {
+  --c-glassbox: #c8692e;
+  --c-llamacpp: #2f72a8;
+  --c-transformers: #6f8a2a;
+  --c-mark: var(--mark);
+  --c-base: var(--ink-2);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --c-llamacpp: #3f86c4;
+    --c-transformers: #7f9a35;
+  }
+}
+:root[data-theme='dark'] {
+  --c-llamacpp: #3f86c4;
+  --c-transformers: #7f9a35;
+}
+.sw--glassbox,
+.bar--glassbox,
+.dot--glassbox {
+  background: var(--c-glassbox);
+  fill: var(--c-glassbox);
+}
+.sw--llamacpp,
+.bar--llamacpp,
+.dot--llamacpp {
+  background: var(--c-llamacpp);
+  fill: var(--c-llamacpp);
+}
+.sw--transformers,
+.bar--transformers,
+.dot--transformers {
+  background: var(--c-transformers);
+  fill: var(--c-transformers);
+}
+.sw--mark,
+.dot--mark {
+  background: var(--c-mark);
+  fill: var(--c-mark);
+}
+.sw--base,
+.dot--base {
+  background: var(--c-base);
+  fill: var(--c-base);
+}
+.line {
+  fill: none;
+  stroke-width: 2;
+}
+.line--glassbox {
+  stroke: var(--c-glassbox);
+}
+.line--llamacpp {
+  stroke: var(--c-llamacpp);
+}
+.line--transformers {
+  stroke: var(--c-transformers);
+}
+.line--mark {
+  stroke: var(--c-mark);
+}
+.line--base {
+  stroke: var(--c-base);
+}
+.dot {
+  stroke: var(--ground);
+  stroke-width: 2;
+}
+
+.hbars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.hbars li {
+  display: grid;
+  grid-template-columns: minmax(9em, 14em) 1fr 4em;
+  gap: 12px;
+  align-items: center;
+}
+.hbars__track {
+  height: 26px;
+}
+.hbars__bar {
+  display: block;
+  height: 100%;
+  background: var(--c-glassbox);
+  border-radius: 0 3px 3px 0;
+  transform-origin: left;
+  transform: scaleX(var(--w));
+}
+.hbars__val {
+  font-weight: 700;
+  text-align: right;
+}
+
+.bench table {
+  border-collapse: collapse;
+  width: 100%;
+  max-width: 760px;
+  font-size: var(--step--1);
+}
+.bench th,
+.bench td {
+  text-align: left;
+  padding: 8px 12px 8px 0;
+  border-bottom: 1px solid var(--sunk);
+}
+.bench th {
+  font-weight: 700;
+}
+.bench details summary {
+  cursor: pointer;
+  font-weight: 600;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}

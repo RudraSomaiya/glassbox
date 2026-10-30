@@ -33,9 +33,12 @@
   padding: 2px 8px;
   border-radius: 3px;
   white-space: pre;
-  background: color-mix(in srgb, var(--film), rgb(var(--film-dense)) calc((1 - var(--p)) * 88%));
-  color: #fbeadb;
+  background: color-mix(in srgb, var(--film), rgb(var(--film-dense)) calc(var(--d) * 90%));
+  color: var(--film-ink);
   font-weight: 600;
+}
+.lens__tok--dense {
+  color: #fbeadb;
 }
 .lens__row--hit .lens__tok {
   box-shadow: 0 0 0 2px var(--mark);

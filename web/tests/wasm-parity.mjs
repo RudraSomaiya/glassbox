@@ -4,7 +4,8 @@
 //
 //   npm run test:wasm [-- standin-135M]
 // Needs: scripts/build_wasm.sh, and web/public/models -> ../../models.
-import { chromium } from 'playwright'
+import { createRequire } from 'node:module'
+const { chromium } = createRequire(import.meta.url)('playwright')
 import { spawn } from 'node:child_process'
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import assert from 'node:assert/strict'
@@ -14,8 +15,12 @@ const golden = JSON.parse(readFileSync(new URL(`../../models/${model}/golden.jso
 const cases = golden.cases.slice(0, 3).map((c) => ({ ids: c.ids, want: c.greedy.slice(0, 32) }))
 
 const port = 5199
-const server = spawn('npx', ['vite', '--port', String(port), '--strictPort'], { stdio: ['ignore', 'pipe', 'inherit'] })
-await new Promise((ok) => server.stdout.on('data', (d) => String(d).includes('Local') && ok()))
+const server = spawn('npx', ['vite', '--port', String(port), '--strictPort'], { stdio: 'ignore' })
+for (let i = 0; ; i++) {
+  if (await fetch(`http://localhost:${port}/`).then((r) => r.ok, () => false)) break
+  if (i > 100) throw new Error('vite did not start')
+  await new Promise((r) => setTimeout(r, 200))
+}
 
 const browser = await chromium.launch()
 try {

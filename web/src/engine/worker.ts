@@ -139,6 +139,11 @@ onmessage = async (e: MessageEvent<ToWorker>) => {
       post({ type: 'done', reason: 'stopped' })
     } else if (m.type === 'inspect') {
       post({ type: 'inspect', pos: m.pos, data: JSON.parse(engine!.inspect(m.pos, 5)) })
+    } else if (m.type === 'dist') {
+      // The raw next-token logits, top k, for the sampling playground.
+      const l = engine!.logits()
+      const idx = Array.from(l.keys()).sort((a, b) => l[b] - l[a]).slice(0, m.k)
+      post({ type: 'dist', top: idx.map((id) => ({ id, p: 0, logit: l[id], text: text(id) })) })
     } else if (m.type === 'cache') {
       post({ type: 'cache', data: JSON.parse(engine!.cache()) })
     }

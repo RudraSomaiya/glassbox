@@ -1,0 +1,161 @@
+.replay {
+  margin: 0;
+  display: grid;
+  gap: 16px;
+}
+.replay figcaption {
+  max-width: 64ch;
+}
+.replay__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+}
+.replay__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  margin: 0;
+}
+.replay__stats div {
+  display: grid;
+}
+.replay__stats dt {
+  font-size: var(--step--1);
+  color: var(--ink-2);
+}
+.replay__stats dd {
+  margin: 0;
+  font-size: var(--step-1);
+  font-weight: 800;
+  font-variation-settings: 'wdth' 110;
+}
+.replay__legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  font-size: var(--step--1);
+  color: var(--ink-2);
+  align-items: center;
+}
+.replay__legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Speculative: latent drafts, developed accepts, crossed-out rejects. */
+.spec__strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 14px 10px;
+  background: var(--film);
+  min-height: 72px;
+}
+.spec__frame {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 7px;
+  border-radius: 3px;
+  white-space: pre;
+  font-size: 1rem;
+  color: var(--film-ink);
+  background: color-mix(in srgb, var(--film), white 18%);
+  animation: develop var(--standard) var(--ease) both;
+}
+.replay__legend .spec__frame {
+  height: 26px;
+  font-size: var(--step--1);
+  animation: none;
+}
+.spec__frame--draft {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--film-ink) 45%, transparent);
+  opacity: 0.75;
+  filter: blur(0.4px);
+}
+.spec__frame--accepted {
+  background: color-mix(in srgb, var(--film), white 30%);
+  font-weight: 600;
+}
+.spec__frame--target {
+  background: rgb(var(--film-dense));
+  color: #fbeadb;
+  font-weight: 600;
+}
+.spec__frame--rejected {
+  background: transparent;
+  color: var(--mark-ink);
+  text-decoration: line-through 2px;
+  text-decoration-color: var(--mark);
+  box-shadow: inset 0 0 0 2px var(--mark);
+  opacity: 0.85;
+}
+.spec__strip .spec__frame--rejected {
+  color: var(--film-ink);
+}
+
+/* Scheduler timeline */
+.sched__scroll {
+  overflow-x: auto;
+}
+.sched {
+  width: 100%;
+  min-width: 640px;
+  height: auto;
+  display: block;
+}
+.sched__lane {
+  fill: var(--sunk);
+}
+.sched__prefill {
+  fill: var(--film);
+}
+.sched__decode {
+  fill: var(--ink);
+}
+.sched__load {
+  fill: var(--film);
+  opacity: 0.55;
+}
+.sched__arrive {
+  fill: var(--mark);
+}
+.sched__preempt {
+  stroke: var(--mark);
+  stroke-width: 2.5;
+}
+.sched__head {
+  stroke: var(--mark);
+  stroke-width: 1.5;
+}
+.sched__axis {
+  fill: var(--ink-2);
+  font-size: 12px;
+}
+.key {
+  display: inline-block;
+  width: 16px;
+  height: 12px;
+}
+.key--prefill {
+  background: var(--film);
+}
+.key--decode {
+  background: var(--ink);
+  height: 6px;
+}
+.key--arrive {
+  background: var(--mark);
+  width: 3px;
+}
+.key--load {
+  background: var(--film);
+  opacity: 0.55;
+}
