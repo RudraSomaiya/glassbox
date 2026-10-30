@@ -1,0 +1,17 @@
+{
+  "engine": "transformers",
+  "model": "../../models/standin-360M",
+  "dtype": "F32",
+  "threads": 4,
+  "pp512_tok_s": 459.18555007184347,
+  "pp512_sd": 15.092660847476228,
+  "tg128_tok_s": 18.84486806043709,
+  "tg128_sd": 0.6676840745102276,
+  "meta": {
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "commit": "ede17ff",
+    "date": "2026-10-30T13:51:05Z",
+    "torch": "2.15.0+cu132",
+    "transformers": "5.22.1"
+  }
+}

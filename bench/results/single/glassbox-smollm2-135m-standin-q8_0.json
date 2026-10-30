@@ -1,0 +1,20 @@
+{
+  "dtype": "Q8_0",
+  "engine": "glassbox",
+  "label": "smollm2-135m-standin",
+  "meta": {
+    "commit": "ede17ff",
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "date": "2026-10-30T13:47:36Z",
+    "logical_cpus": 4,
+    "simd": true
+  },
+  "model": "models/standin-135M",
+  "pp512_sd": 14.311983091647159,
+  "pp512_tok_s": 316.5458796165194,
+  "source": "gguf",
+  "tg128_sd": 8.813201137362059,
+  "tg128_tok_s": 186.59530232550333,
+  "threads": 4,
+  "weight_mb": 142.884864
+}

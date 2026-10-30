@@ -1,0 +1,20 @@
+{
+  "dtype": "F32",
+  "engine": "glassbox",
+  "label": "smollm2-1.7b-standin",
+  "meta": {
+    "commit": "ede17ff",
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "date": "2026-10-30T13:54:17Z",
+    "logical_cpus": 4,
+    "simd": true
+  },
+  "model": "models/standin-1.7B",
+  "pp512_sd": 0.6462944432715497,
+  "pp512_tok_s": 38.80162323613808,
+  "source": "gguf",
+  "tg128_sd": 0.029116343123201452,
+  "tg128_tok_s": 4.997840868942335,
+  "threads": 4,
+  "weight_mb": 6845.104128
+}

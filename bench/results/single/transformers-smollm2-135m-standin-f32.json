@@ -1,0 +1,17 @@
+{
+  "engine": "transformers",
+  "model": "../../models/standin-135M",
+  "dtype": "F32",
+  "threads": 4,
+  "pp512_tok_s": 1083.6175026288277,
+  "pp512_sd": 30.285668213718985,
+  "tg128_tok_s": 37.00153097169628,
+  "tg128_sd": 0.6256719829146992,
+  "meta": {
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "commit": "ede17ff",
+    "date": "2026-10-30T13:48:31Z",
+    "torch": "2.15.0+cu132",
+    "transformers": "5.22.1"
+  }
+}
