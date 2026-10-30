@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 340" width="760" height="340" role="img" aria-labelledby="t">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 384" width="760" height="384" role="img" aria-labelledby="t">
 <style>
   .bg { fill: #fbfcfb } .ink { fill: #121413 } .ink2 { fill: #444a46 } .grid { stroke: #dfe3df }
   .glassbox { fill: #c8692e } .llamacpp { fill: #2f72a8 } .transformers { fill: #6f8a2a } .mark { fill: #c92a22 }
@@ -12,22 +12,25 @@
   }
 </style>
 <title id="t">How Glassbox got fast: decode speed at each step</title>
-<rect width="760" height="340" class="bg"/>
+<rect width="760" height="384" class="bg"/>
 <text x="24.0" y="32.0" class="ink" font-size="18" text-anchor="start" font-weight="700">How it got fast: decode tokens per second</text>
-<text x="24.0" y="54.0" class="ink2" font-size="13" text-anchor="start" font-weight="400">standin-135M, Intel(R) Xeon(R) Processor @ 2.10GHz, commit a3f6389</text>
+<text x="24.0" y="54.0" class="ink2" font-size="13" text-anchor="start" font-weight="400">standin-135M, Intel(R) Xeon(R) Processor @ 2.10GHz, commit 2841c8e</text>
 <text x="188.0" y="102.0" class="ink" font-size="13" text-anchor="end" font-weight="400">scalar, 1 thread</text>
-<rect x="200" y="86" width="4.1" height="24" rx="3" class="glassbox"><title>scalar, 1 thread: 8.5 tok/s</title></rect>
-<text x="212.1" y="103.0" class="ink" font-size="13" text-anchor="start" font-weight="700">8.5</text>
+<rect x="200" y="86" width="4.2" height="24" rx="3" class="glassbox"><title>scalar, 1 thread: 8.7 tok/s</title></rect>
+<text x="212.2" y="103.0" class="ink" font-size="13" text-anchor="start" font-weight="700">8.7</text>
 <text x="188.0" y="146.0" class="ink" font-size="13" text-anchor="end" font-weight="400">AVX2, 1 thread</text>
-<rect x="200" y="130" width="10.7" height="24" rx="3" class="glassbox"><title>AVX2, 1 thread: 22.3 tok/s</title></rect>
-<text x="218.7" y="147.0" class="ink" font-size="13" text-anchor="start" font-weight="700">22.3</text>
+<rect x="200" y="130" width="11.6" height="24" rx="3" class="glassbox"><title>AVX2, 1 thread: 24.1 tok/s</title></rect>
+<text x="219.6" y="147.0" class="ink" font-size="13" text-anchor="start" font-weight="700">24.1</text>
 <text x="188.0" y="190.0" class="ink" font-size="13" text-anchor="end" font-weight="400">AVX2, 4 threads</text>
-<rect x="200" y="174" width="31.3" height="24" rx="3" class="glassbox"><title>AVX2, 4 threads: 65.1 tok/s</title></rect>
-<text x="239.3" y="191.0" class="ink" font-size="13" text-anchor="start" font-weight="700">65.1</text>
+<rect x="200" y="174" width="31.4" height="24" rx="3" class="glassbox"><title>AVX2, 4 threads: 65.5 tok/s</title></rect>
+<text x="239.4" y="191.0" class="ink" font-size="13" text-anchor="start" font-weight="700">65.5</text>
 <text x="188.0" y="234.0" class="ink" font-size="13" text-anchor="end" font-weight="400">Q8_0 int8 dot</text>
-<rect x="200" y="218" width="85.2" height="24" rx="3" class="glassbox"><title>Q8_0 int8 dot: 177.5 tok/s</title></rect>
-<text x="293.2" y="235.0" class="ink" font-size="13" text-anchor="start" font-weight="700">177.5</text>
+<rect x="200" y="218" width="90.7" height="24" rx="3" class="glassbox"><title>Q8_0 int8 dot: 189.0 tok/s</title></rect>
+<text x="298.7" y="235.0" class="ink" font-size="13" text-anchor="start" font-weight="700">189.0</text>
 <text x="188.0" y="278.0" class="ink" font-size="13" text-anchor="end" font-weight="400">Q4_0 int8 dot</text>
-<rect x="200" y="262" width="101.8" height="24" rx="3" class="glassbox"><title>Q4_0 int8 dot: 212.0 tok/s</title></rect>
-<text x="309.8" y="279.0" class="ink" font-size="13" text-anchor="start" font-weight="700">212.0</text>
+<rect x="200" y="262" width="105.3" height="24" rx="3" class="glassbox"><title>Q4_0 int8 dot: 219.4 tok/s</title></rect>
+<text x="313.3" y="279.0" class="ink" font-size="13" text-anchor="start" font-weight="700">219.4</text>
+<text x="188.0" y="322.0" class="ink" font-size="13" text-anchor="end" font-weight="400">Q4_0 + AVX-VNNI</text>
+<rect x="200" y="306" width="110.3" height="24" rx="3" class="glassbox"><title>Q4_0 + AVX-VNNI: 229.9 tok/s</title></rect>
+<text x="318.3" y="323.0" class="ink" font-size="13" text-anchor="start" font-weight="700">229.9</text>
 </svg>

@@ -31,20 +31,20 @@
 <text x="42.0" y="157.5" class="ink2" font-size="11" text-anchor="end" font-weight="400">7500</text>
 <line x1="48" x2="348" y1="96.0" y2="96.0" class="grid" stroke-width="1"/>
 <text x="42.0" y="100.0" class="ink2" font-size="11" text-anchor="end" font-weight="400">10000</text>
-<path d="M58.0,326.0 V320.8 q0,-3 3,-3 H79.7 q3,0 3,3 V326.0 Z" class="glassbox"><title>Glassbox F32: 355.3 tok/s</title></path>
-<text x="70.3" y="312.8" class="ink" font-size="11" text-anchor="middle" font-weight="400">355</text>
+<path d="M58.0,326.0 V321.3 q0,-3 3,-3 H79.7 q3,0 3,3 V326.0 Z" class="glassbox"><title>Glassbox F32: 335.7 tok/s</title></path>
+<text x="70.3" y="313.3" class="ink" font-size="11" text-anchor="middle" font-weight="400">336</text>
 <path d="M84.7,326.0 V298.2 q0,-3 3,-3 H106.3 q3,0 3,3 V326.0 Z" class="llamacpp"><title>llama.cpp F32: 1341.3 tok/s</title></path>
 <text x="97.0" y="290.2" class="ink" font-size="11" text-anchor="middle" font-weight="400">1341</text>
 <path d="M111.3,326.0 V304.1 q0,-3 3,-3 H133.0 q3,0 3,3 V326.0 Z" class="transformers"><title>transformers F32: 1083.6 tok/s</title></path>
 <text x="123.7" y="296.1" class="ink" font-size="11" text-anchor="middle" font-weight="400">1084</text>
 <text x="98.0" y="346.0" class="ink2" font-size="12" text-anchor="middle" font-weight="400">F32</text>
-<path d="M168.0,326.0 V321.7 q0,-3 3,-3 H193.0 q3,0 3,3 V326.0 Z" class="glassbox"><title>Glassbox Q8_0: 316.5 tok/s</title></path>
-<text x="182.0" y="313.7" class="ink" font-size="11" text-anchor="middle" font-weight="400">317</text>
+<path d="M168.0,326.0 V322.2 q0,-3 3,-3 H193.0 q3,0 3,3 V326.0 Z" class="glassbox"><title>Glassbox Q8_0: 296.4 tok/s</title></path>
+<text x="182.0" y="314.2" class="ink" font-size="11" text-anchor="middle" font-weight="400">296</text>
 <path d="M198.0,326.0 V273.4 q0,-3 3,-3 H223.0 q3,0 3,3 V326.0 Z" class="llamacpp"><title>llama.cpp Q8_0: 2415.6 tok/s</title></path>
 <text x="212.0" y="265.4" class="ink" font-size="11" text-anchor="middle" font-weight="400">2416</text>
 <text x="198.0" y="346.0" class="ink2" font-size="12" text-anchor="middle" font-weight="400">Q8_0</text>
-<path d="M268.0,326.0 V322.7 q0,-3 3,-3 H293.0 q3,0 3,3 V326.0 Z" class="glassbox"><title>Glassbox Q4_0: 272.6 tok/s</title></path>
-<text x="282.0" y="314.7" class="ink" font-size="11" text-anchor="middle" font-weight="400">273</text>
+<path d="M268.0,326.0 V321.5 q0,-3 3,-3 H293.0 q3,0 3,3 V326.0 Z" class="glassbox"><title>Glassbox Q4_0: 327.5 tok/s</title></path>
+<text x="282.0" y="313.5" class="ink" font-size="11" text-anchor="middle" font-weight="400">328</text>
 <path d="M298.0,326.0 V283.8 q0,-3 3,-3 H323.0 q3,0 3,3 V326.0 Z" class="llamacpp"><title>llama.cpp Q4_0: 1965.8 tok/s</title></path>
 <text x="312.0" y="275.8" class="ink" font-size="11" text-anchor="middle" font-weight="400">1966</text>
 <text x="298.0" y="346.0" class="ink2" font-size="12" text-anchor="middle" font-weight="400">Q4_0</text>
@@ -59,20 +59,20 @@
 <text x="366.0" y="157.5" class="ink2" font-size="11" text-anchor="end" font-weight="400">7500</text>
 <line x1="372" x2="672" y1="96.0" y2="96.0" class="grid" stroke-width="1"/>
 <text x="366.0" y="100.0" class="ink2" font-size="11" text-anchor="end" font-weight="400">10000</text>
-<path d="M382.0,326.0 V325.5 q0,-3 3,-3 H403.7 q3,0 3,3 V326.0 Z" class="glassbox"><title>Glassbox F32: 153.3 tok/s</title></path>
-<text x="394.3" y="317.5" class="ink" font-size="11" text-anchor="middle" font-weight="400">153</text>
+<path d="M382.0,326.0 V325.6 q0,-3 3,-3 H403.7 q3,0 3,3 V326.0 Z" class="glassbox"><title>Glassbox F32: 147.3 tok/s</title></path>
+<text x="394.3" y="317.6" class="ink" font-size="11" text-anchor="middle" font-weight="400">147</text>
 <path d="M408.7,326.0 V316.3 q0,-3 3,-3 H430.3 q3,0 3,3 V326.0 Z" class="llamacpp"><title>llama.cpp F32: 552.2 tok/s</title></path>
 <text x="421.0" y="308.3" class="ink" font-size="11" text-anchor="middle" font-weight="400">552</text>
 <path d="M435.3,326.0 V318.4 q0,-3 3,-3 H457.0 q3,0 3,3 V326.0 Z" class="transformers"><title>transformers F32: 459.2 tok/s</title></path>
 <text x="447.7" y="310.4" class="ink" font-size="11" text-anchor="middle" font-weight="400">459</text>
 <text x="422.0" y="346.0" class="ink2" font-size="12" text-anchor="middle" font-weight="400">F32</text>
-<path d="M492.0,326.0 V326.0 q0,-3 3,-3 H517.0 q3,0 3,3 V326.0 Z" class="glassbox"><title>Glassbox Q8_0: 131.6 tok/s</title></path>
-<text x="506.0" y="318.0" class="ink" font-size="11" text-anchor="middle" font-weight="400">132</text>
+<path d="M492.0,326.0 V325.4 q0,-3 3,-3 H517.0 q3,0 3,3 V326.0 Z" class="glassbox"><title>Glassbox Q8_0: 157.2 tok/s</title></path>
+<text x="506.0" y="317.4" class="ink" font-size="11" text-anchor="middle" font-weight="400">157</text>
 <path d="M522.0,326.0 V306.3 q0,-3 3,-3 H547.0 q3,0 3,3 V326.0 Z" class="llamacpp"><title>llama.cpp Q8_0: 987.9 tok/s</title></path>
 <text x="536.0" y="298.3" class="ink" font-size="11" text-anchor="middle" font-weight="400">988</text>
 <text x="522.0" y="346.0" class="ink2" font-size="12" text-anchor="middle" font-weight="400">Q8_0</text>
-<path d="M592.0,326.0 V326.0 q0,-3 3,-3 H617.0 q3,0 3,3 V326.0 Z" class="glassbox"><title>Glassbox Q4_0: 131.3 tok/s</title></path>
-<text x="606.0" y="318.0" class="ink" font-size="11" text-anchor="middle" font-weight="400">131</text>
+<path d="M592.0,326.0 V326.0 q0,-3 3,-3 H617.0 q3,0 3,3 V326.0 Z" class="glassbox"><title>Glassbox Q4_0: 128.8 tok/s</title></path>
+<text x="606.0" y="318.0" class="ink" font-size="11" text-anchor="middle" font-weight="400">129</text>
 <path d="M622.0,326.0 V306.4 q0,-3 3,-3 H647.0 q3,0 3,3 V326.0 Z" class="llamacpp"><title>llama.cpp Q4_0: 982.9 tok/s</title></path>
 <text x="636.0" y="298.4" class="ink" font-size="11" text-anchor="middle" font-weight="400">983</text>
 <text x="622.0" y="346.0" class="ink2" font-size="12" text-anchor="middle" font-weight="400">Q4_0</text>

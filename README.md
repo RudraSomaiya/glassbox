@@ -14,7 +14,7 @@ No ML framework: the tokenizer, the SIMD kernels, quantization, the paged KV cac
 
 - **Tokenizer:** byte-level BPE read from `tokenizer.json`, pre-tokenizer and special tokens included. Identical to Hugging Face `tokenizers` on 2,175 test strings (English, code, emoji, Hindi, Hinglish, whitespace).
 - **Model:** Llama family (RMSNorm, RoPE, grouped-query attention, SwiGLU, tied or untied head), from safetensors or GGUF. Logits match Hugging Face `transformers` in f32 to within 4.5e-6, and 64-token greedy continuations are identical on 21 prompts.
-- **Kernels:** f32, Q8_0 and Q4_0 matrix multiplication with AVX2+FMA (picked at runtime) and WebAssembly SIMD, each checked against a scalar version. Register-tiled, prefetching, on a spinning thread pool.
+- **Kernels:** f32, Q8_0 and Q4_0 matrix multiplication with AVX2+FMA and AVX-VNNI (picked at runtime) and WebAssembly SIMD, each checked against a scalar version. Register-tiled, prefetching, on a spinning thread pool.
 - **Quantization:** GGUF-compatible Q8_0 and Q4_0. The Q8_0 quantizer produces bit-identical blocks to llama.cpp's; perplexity agrees with llama.cpp's to five significant figures on the same files.
 - **KV cache:** paged in 16-token blocks with reference counts, copy-on-write forks and automatic prefix sharing.
 - **Server:** continuous batching with chunked prefill and preemption, OpenAI-compatible `/v1/chat/completions` and `/v1/completions` with streaming, `/metrics` for Prometheus, `/v1/trace` to record a run for the web app.
@@ -30,11 +30,11 @@ One machine: a 4-vCPU cloud VM (Intel Xeon, Emerald Rapids, AVX-512 available), 
 
 | SmolLM2 shapes | Glassbox decode | llama.cpp decode | Glassbox prefill | llama.cpp prefill |
 |---|---|---|---|---|
-| 135M Q8_0 | 187 tok/s | 272 tok/s | 317 tok/s | 2,416 tok/s |
-| 360M Q8_0 | 49 tok/s | 88 tok/s | 132 tok/s | 988 tok/s |
+| 135M Q8_0 | 181 tok/s | 272 tok/s | 296 tok/s | 2,416 tok/s |
+| 360M Q8_0 | 60 tok/s | 88 tok/s | 157 tok/s | 988 tok/s |
 | 1.7B Q8_0 | 13 tok/s | 24 tok/s | 44 tok/s | 226 tok/s |
 
-Decode, where memory bandwidth decides, runs at 50-80% of llama.cpp's speed. Prompt processing is 3-7x slower: llama.cpp uses AVX-512 VNNI and repacked weight layouts for its matrix kernels, and Glassbox is AVX2 dot products. In f32 Glassbox decodes faster than `transformers` (63 vs 37 tok/s at 135M).
+Decode, where memory bandwidth decides, runs at 50-80% of llama.cpp's speed. Prompt processing is 5-8x slower: llama.cpp uses 512-bit VNNI kernels over repacked weight layouts, and Glassbox runs 256-bit dot products (AVX-VNNI where the CPU has it) over the original layout. In f32 Glassbox decodes faster than `transformers` (67 vs 37 tok/s at 135M).
 
 How it got fast, decode on the 135M shapes:
 
@@ -153,7 +153,7 @@ python3 tools/reference/charts.py
 
 ## Limitations
 
-- Slower than llama.cpp everywhere, and much slower at prompt processing (no AVX-512 or repacked GEMM yet).
+- Slower than llama.cpp everywhere, and much slower at prompt processing (no 512-bit kernels or repacked GEMM yet).
 - CPU only. The browser build is single-threaded.
 - The benchmark and trace data in this repository are from stand-in weights; see the note at the top.
 - JSON schema support is a practical subset: object, array, string, number, integer, boolean, null, enum, nesting. Objects are written with every listed property, in schema order.

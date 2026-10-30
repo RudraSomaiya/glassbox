@@ -39,14 +39,14 @@ Batched and unbatched runs are bitwise identical: every output cell of a matmul 
 - **f32 matrix**: `Vec<f32>` `[rows, cols]` row-major, `rows = out_features` (the `nn.Linear` layout). A matvec reads each row contiguously.
 - **Q8_0**: blocks of 32 weights, `#[repr(C)] { d: f16 bits, qs: [i8; 32] }` = 34 bytes, value = `qs[j] * d`. Bit-identical to ggml's layout and reference quantizer.
 - **Q4_0**: `{ d: f16 bits, qs: [u8; 16] }` = 18 bytes; low nibble of `qs[j]` is weight `j`, high nibble weight `j + 16`; value = `(nibble - 8) * d`.
-- Quantized matmuls first quantize each activation row to Q8_0, so the inner loop is `i8 x i8` products (`maddubs`/`madd` on AVX2) with one f32 multiply per block.
+- Quantized matmuls first quantize each activation row to Q8_0, so the inner loop is `i8 x i8` products (`maddubs`/`madd` on AVX2, a single `vpdpbusd` with AVX-VNNI, which needs one operand unsigned, so the sign of x is moved onto y first) with one f32 multiply per block. The int8 kernels are one macro instantiated for both instruction sets and picked at runtime.
 - Weights are loaded from safetensors (bf16/f16/f32, memory-mapped and converted) or GGUF (F32/F16/Q8_0/Q4_0). The browser quantizes each matrix to Q8_0 as it's read, so peak memory stays near the file size.
 
 ## Kernels
 
 `crates/glassbox-core/src/kernels.rs`. Every SIMD kernel has a scalar twin; tests compare them on awkward lengths (1, 7, 31, 33, 1537...).
 
-- **Register tiles.** The AVX2 kernels compute `R` weight rows against `N` activation rows at once, `out[i][k] = dot(w[i], x[k])`. Decode uses 4x1 (four independent accumulators hide FMA latency, the activation row is loaded once per four weight rows); prefill uses 2x4 (each weight block is loaded and, for Q4_0, unpacked once for four tokens).
+- **Register tiles.** The AVX2 kernels compute `R` weight rows against `N` activation rows at once, `out[i][k] = dot(w[i], x[k])`. Decode uses 4x1 (four independent accumulators hide FMA latency, the activation row is loaded once per four weight rows); prefill uses 2x4 (each weight block is loaded and, for Q4_0, unpacked once for four tokens). Two or three tokens (speculative verification, small batches) use 4x2, so weights aren't re-read per token.
 - **f16 scales through a table.** `_mm_cvtph_ps` on a single value compiled to a `vpinsrw` into the accumulator register, a false dependency that chained every block. A 64K-entry lookup table (as in ggml) removed it.
 - **Prefetch.** Each task prefetches the next row tile's bytes. One core streaming from DRAM otherwise keeps too few misses in flight.
 - **Threads.** `pool.rs`, a fork-join pool whose workers spin for 2 ms after each job before parking. A matmul is split into tasks of 16 output rows. Decode runs ~150 parallel regions per token, and rayon's futex wake-ups (~50 us each) cost more than the work.

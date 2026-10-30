@@ -16,15 +16,17 @@ The tokenizer got the same treatment: 2,175 strings in English, code, emoji, Hin
 
 ## Making it fast
 
-The first working version decoded the 135M model at 8.5 tokens a second on one core with scalar code. Here's how it got to 212.
+The first working version decoded the 135M model at 8.7 tokens a second on one core with scalar code. Here's how it got to 230.
 
 ![Kernel progression](../bench/results/charts/progression.svg)
 
-**SIMD.** AVX2 and FMA versions of the dot products, chosen at runtime, each tested against the scalar version on awkward lengths like 1, 31 and 1537. Then register tiles: instead of one weight row times one activation vector, compute four weight rows against one vector (decode) or two rows against four vectors (prefill). Loads get reused and the four accumulators hide FMA latency. 8.5 to 22.3 tokens a second.
+**SIMD.** AVX2 and FMA versions of the dot products, chosen at runtime, each tested against the scalar version on awkward lengths like 1, 31 and 1537. Then register tiles: instead of one weight row times one activation vector, compute four weight rows against one vector (decode) or two rows against four vectors (prefill). Loads get reused and the four accumulators hide FMA latency. 8.7 to 24.1 tokens a second.
 
-**Threads.** Splitting each matrix multiplication across four cores took it to 65, after one surprise I'll come back to.
+**Threads.** Splitting each matrix multiplication across four cores took it to 65.5, after one surprise I'll come back to.
 
-**Quantization.** Decode is bound by memory bandwidth: each weight is read once per token and used for two flops. Store weights in 8 bits and there's less to read. Q8_0 keeps blocks of 32 weights with one f16 scale; Q4_0 packs two weights per byte. To keep the inner loop in integers, each activation vector is also quantized to Q8_0 before the multiply, so a block's dot product is 32 int8 multiply-adds and one float multiply. 65 to 178 (Q8_0) and 212 (Q4_0).
+**Quantization.** Decode is bound by memory bandwidth: each weight is read once per token and used for two flops. Store weights in 8 bits and there's less to read. Q8_0 keeps blocks of 32 weights with one f16 scale; Q4_0 packs two weights per byte. To keep the inner loop in integers, each activation vector is also quantized to Q8_0 before the multiply, so a block's dot product is 32 int8 multiply-adds and one float multiply. 65.5 to 189 (Q8_0) and 219 (Q4_0).
+
+**VNNI.** This CPU has AVX-VNNI, whose `vpdpbusd` does the int8 multiply and the pairwise adds in one instruction where AVX2 needs three. It wants one operand unsigned, so the kernel moves the sign of x onto y first (|x|·sign(y, x) = x·y). The int8 kernels are a macro instantiated twice, plain AVX2 and VNNI, picked at runtime. The kernels got 13-37% faster on their own; decode only 5% (219 to 230), because by then it's mostly waiting on memory.
 
 Three things along the way were worth more than any amount of clever arithmetic:
 
@@ -40,9 +42,9 @@ Same machine, same GGUF files, same thread count:
 
 ![Decode speed](../bench/results/charts/single-decode.svg)
 
-On decode, Glassbox runs at 50-80% of llama.cpp. On prompt processing it's 3-7x slower (317 against 2,416 tokens a second for 135M Q8_0). The gap is the matrix-matrix kernel: llama.cpp on this CPU uses AVX-512 with VNNI, a single instruction for the multiply-add sequence I do in three, and repacks weights into interleaved layouts so its GEMM streams contiguous memory. Mine is AVX2 dot products over the original layout. That's the next thing I'd build. It also shows up in serving, below: when prefill is slow, everything that waits on prefill is slow.
+On decode, Glassbox runs at 50-80% of llama.cpp. On prompt processing it's 5-8x slower (296 against 2,416 tokens a second for 135M Q8_0). The gap is the matrix-matrix kernel: llama.cpp on this CPU uses 512-bit VNNI and repacks weights into interleaved layouts so its GEMM streams contiguous memory. Mine is 256-bit dot products over the original layout. That's the next thing I'd build. It also shows up in serving, below: when prefill is slow, everything that waits on prefill is slow.
 
-`transformers` is a useful other baseline: it beats me at prefill (it calls oneDNN), and I beat it at decode in f32 (63 against 37 tokens a second at 135M), because a Python loop around PyTorch has a lot of per-token overhead.
+`transformers` is a useful other baseline: it beats me at prefill (it calls oneDNN), and I beat it at decode in f32 (67 against 37 tokens a second at 135M), because a Python loop around PyTorch has a lot of per-token overhead.
 
 ## Memory: a paged KV cache
 
@@ -83,4 +85,4 @@ The machine this was built on couldn't download from Hugging Face. Every speed n
 
 ## What's next
 
-AVX-512 VNNI kernels and repacked weights for prefill; multithreaded WebAssembly; a second architecture (Qwen3) to prove nothing is hard-coded; the real-weight numbers.
+512-bit kernels and repacked weights for prefill; multithreaded WebAssembly; a second architecture (Qwen3) to prove nothing is hard-coded; the real-weight numbers.
