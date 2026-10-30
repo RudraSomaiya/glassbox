@@ -11,7 +11,7 @@ const USAGE: &str = "usage:
   glassbox-bench progression --model DIR [--out FILE]
   glassbox-bench quality     --model DIR --file TEXT [--ctx 512] [--chunks 100] [--out FILE]
   glassbox-bench serve       --model DIR [--dtype q8_0] [--out FILE]
-  glassbox-bench spec        [--set random|trained] [--out FILE]   (needs the stand-ins under models/)
+  glassbox-bench spec        [--set real|random|trained] [--out FILE]   (needs the stand-ins under models/)
   glassbox-bench kernels";
 
 fn arg<'a>(args: &'a [String], name: &str) -> Option<&'a str> {
@@ -374,7 +374,14 @@ fn serve(args: &[String]) {
 fn spec(args: &[String]) {
     use glassbox_core::spec::{generate, Drafter};
     let gguf = |m: &str, q: &str| Model::load_gguf(format!("models/{m}/model-{q}.gguf")).expect("gguf");
-    let tok = glassbox_core::Tokenizer::from_file("models/standin-135M/tokenizer.json").unwrap();
+    let set = arg(args, "--set").unwrap_or("random");
+    let trained = set == "trained";
+    // The real SmolLM2 checkpoints, or random-weight stand-ins with their shapes.
+    let dir = |size: &str| match set {
+        "real" => format!("SmolLM2-{size}-Instruct"),
+        _ => format!("standin-{size}"),
+    };
+    let tok = glassbox_core::Tokenizer::from_file(format!("models/{}/tokenizer.json", dir("135M"))).unwrap();
     let text = std::fs::read_to_string("data/perplexity.txt").unwrap_or_default();
     let chat = |u: &str| tok.encode(&glassbox_core::Tokenizer::chat_prompt(&[("user", u)]));
     let questions = [
@@ -398,15 +405,14 @@ fn spec(args: &[String]) {
         .collect();
     let max = 64;
     let mut out = Vec::new();
-    // Random-weight stand-ins for speed at real shapes, or the trained tiny
-    // stand-in, whose distributions are peaked enough for acceptance to mean something.
-    let trained = arg(args, "--set") == Some("trained");
+    // The trained tiny stand-in has distributions peaked enough for acceptance
+    // to mean something when the real weights aren't available.
     let load_random = || {
         (
-            gguf("standin-135M", "q8_0"),
-            gguf("standin-360M", "q8_0"),
-            gguf("standin-1.7B", "q8_0"),
-            gguf("standin-1.7B", "q4_0"),
+            gguf(&dir("135M"), "q8_0"),
+            gguf(&dir("360M"), "q8_0"),
+            gguf(&dir("1.7B"), "q8_0"),
+            gguf(&dir("1.7B"), "q4_0"),
         )
     };
     let load_tiny = || {
@@ -490,7 +496,11 @@ fn spec(args: &[String]) {
     write(
         arg(args, "--out"),
         &json!({"max_tokens": max, "decoding": "greedy", "runs": out, "threads": pool::threads(),
-        "note": if trained { "trained tiny stand-in (6 layers, 384 wide): realistic distributions, but tiny" } else { "random-weight stand-ins: acceptance between different random models is near zero by construction, and random logits are so nearly tied that even 4-bit noise flips the argmax" },
+        "note": match set {
+            "real" => "SmolLM2 Instruct checkpoints",
+            "trained" => "trained tiny stand-in (6 layers, 384 wide): realistic distributions, but tiny",
+            _ => "random-weight stand-ins: acceptance between different random models is near zero by construction, and random logits are so nearly tied that even 4-bit noise flips the argmax",
+        },
         "timing": "decode only: tokens / (total time - target prefill time)",
         "meta": meta()}),
     );

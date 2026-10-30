@@ -92,7 +92,11 @@ def write(model_dir, qtype, out):
 
 
 def main(model_dir):
+    # GGUF_TYPES=q8_0,q4_0 skips the f32 file, which is 7 GB for 1.7B.
+    types = os.environ.get("GGUF_TYPES", "f32,q8_0,q4_0").split(",")
     for q in [gguf.GGMLQuantizationType.F32, gguf.GGMLQuantizationType.Q8_0, gguf.GGMLQuantizationType.Q4_0]:
+        if q.name.lower() not in types:
+            continue
         out = os.path.join(model_dir, f"model-{q.name.lower()}.gguf")
         if not os.path.exists(out):
             write(model_dir, q, out)
