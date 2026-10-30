@@ -157,7 +157,9 @@ name = "glassbox-bench"
 version = "0.1.0"
 dependencies = [
  "glassbox-core",
+ "glassbox-server",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]

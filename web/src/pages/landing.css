@@ -105,7 +105,7 @@
   font-size: var(--step--1);
 }
 .stepwedge li.dense {
-  color: #fbeadb;
+  color: var(--film-ink-dense);
 }
 
 .sheet__grid {

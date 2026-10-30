@@ -87,7 +87,7 @@
 }
 .spec__frame--target {
   background: rgb(var(--film-dense));
-  color: #fbeadb;
+  color: var(--film-ink-dense);
   font-weight: 600;
 }
 .spec__frame--rejected {
@@ -98,6 +98,9 @@
   outline: 2px solid var(--mark);
   outline-offset: -2px;
   opacity: 0.85;
+}
+.replay__legend .spec__frame--rejected {
+  color: var(--ink);
 }
 .spec__strip .spec__frame--rejected {
   color: var(--film-ink);

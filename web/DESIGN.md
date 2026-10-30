@@ -20,7 +20,7 @@ Light theme is the light table: luminous cool white, black ink, the C-41 negativ
 | `--film-dense` | `rgb(29 10 2)` | `rgb(8 3 0)` | D-max, mixed into frames by density |
 | `--mark` | `#c92a22` | `#ff6b3d` | selection, focus, forks, the action on hover |
 
-Probability is never shown by hue. It is **optical density**, as on real film: `D = log10(1/p)`, scaled so D = 3 (p = 0.001) is fully dense, applied as `color-mix(film, film-dense, D/3 * 90%)` (`density()` in `views/FilmStrip.tsx`). Text flips to light above D/3 = 0.3. A log scale is what separates 10% from 1%; a linear one paints every unlikely token the same black.
+Probability is never shown by hue. It is **optical density**, as on real film: `D = log10(1/p)`, scaled so D = 3 (p = 0.001) is fully dense, applied as `color-mix(film, film-dense, D/3 * 90%)` (`density()` in `views/FilmStrip.tsx`). Density is quantized to an 11-step wedge (D in steps of 0.3), as on a photographic step wedge; text is black up to the 0.1 step and white from the 0.2 step, which keeps both above 4.5:1 with margin (a continuous ramp has a crossover tone where neither colour does). A log scale is what separates 10% from 1%; a linear one paints every unlikely token the same black.
 
 ## Type
 
@@ -48,7 +48,7 @@ Edge print (frame numbers in the sprocket band) uses width 70 at 12px, numerals 
 
 Personality: precision. One curve, `cubic-bezier(0.2, 0, 0, 1)`, three durations: 120ms (feedback), 240ms (panels), 480ms (the signature).
 
-- **Signature: develop.** A new frame appears as a latent image, blurred and pale, and sharpens to its true density in 480ms.
+- **Signature: the gate.** A new frame wipes in from the left (`clip-path`), like film advancing through a projector gate, in 480ms. Only the clip moves: colours are the frame's true density throughout, so contrast never dips mid-motion.
 - The gate (the red cursor at the end of a running strip) blinks in two steps, like a projector gate.
 - Step-wedge bars grow from the left when the loupe opens.
 - `prefers-reduced-motion`: everything lands immediately; the hero replay shows the whole strip at once.

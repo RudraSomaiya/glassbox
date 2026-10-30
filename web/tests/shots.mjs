@@ -74,6 +74,10 @@ try {
         await shoot(page, `play-memory-${tag}`)
         await page.getByRole('tab', { name: 'Sampling' }).click()
         await shoot(page, `play-sampling-${tag}`)
+        await page.getByRole('tab', { name: 'Batching' }).click()
+        await shoot(page, `play-batching-${tag}`)
+        await page.getByRole('tab', { name: 'Speculative' }).click()
+        await shoot(page, `play-speculative-${tag}`)
       }
       await ctx.close()
     }

@@ -21,7 +21,7 @@ $bin spec-trace --model "$BIG" --lookup -k 4 -n 64 \
   --prompt "Repeat this sentence twice: the quick brown fox jumps over the lazy dog." --out $out/lookup.json
 
 # Scheduler: a small KV pool so preemption shows up, ten staggered requests.
-$bin serve --model "$BIG" --dtype q8_0 --port 8091 --blocks 48 --budget 128 >/dev/null 2>&1 &
+$bin serve --model "$BIG" --dtype q8_0 --port 8091 --blocks 28 --budget 128 >/dev/null 2>&1 &
 pid=$!
 trap 'kill $pid' EXIT
 until curl -sf localhost:8091/health >/dev/null; do sleep 0.5; done

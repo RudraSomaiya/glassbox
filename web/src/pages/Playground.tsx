@@ -6,9 +6,14 @@ import { Attention, Lens } from '../views/Inspector'
 import { LoadButton } from '../views/LoadButton'
 import { Memory } from '../views/Memory'
 import { Sampling } from '../views/Sampling'
+import { Scheduler, type SchedTrace } from '../views/Scheduler'
+import { Speculative, type SpecTrace } from '../views/Speculative'
+import scheduler from '../traces/scheduler.json'
+import speculative from '../traces/speculative.json'
+import lookup from '../traces/lookup.json'
 import './playground.css'
 
-const VIEWS = ['Layers', 'Attention', 'Memory', 'Sampling'] as const
+const VIEWS = ['Layers', 'Attention', 'Memory', 'Sampling', 'Batching', 'Speculative'] as const
 type View = (typeof VIEWS)[number]
 
 export function Playground() {
@@ -91,8 +96,7 @@ export function Playground() {
         </p>
       </section>
 
-      {s.info && (
-        <section className="play__bench" aria-labelledby="views-title">
+      <section className="play__bench" aria-labelledby="views-title">
           <h2 id="views-title" className="play__h2">
             Inside the model
           </h2>
@@ -134,18 +138,33 @@ export function Playground() {
                 )
               ) : (
                 <p className="play__empty">
-                  {selected === null
+                  {!s.info
+                    ? 'Load the model and write something, then pick a frame to see how the model arrived at it.'
+                    : selected === null
                     ? 'Pick a frame on the strip to see how the model arrived at it.'
                     : s.status === 'running'
                       ? 'Stop or wait for the writing to finish, then the model can be traced.'
                       : 'Tracing that step…'}
                 </p>
               ))}
+            {view === 'Batching' && <Scheduler trace={scheduler as unknown as SchedTrace} />}
+            {view === 'Speculative' && (
+              <div className="play__spec">
+                <Speculative trace={speculative as unknown as SpecTrace} />
+                <Speculative trace={lookup as unknown as SpecTrace} />
+              </div>
+            )}
+            {(view === 'Batching' || view === 'Speculative') && scheduler.standin && (
+              <p className="play__empty">
+                Recorded from the native server with a small stand-in model trained locally, because the real weights could
+                not be downloaded when this was recorded.
+              </p>
+            )}
             {view === 'Memory' &&
-              (s.cache ? (
+              (s.info && s.cache ? (
                 <Memory cache={s.cache} bytesPerToken={s.info.kv_bytes_per_token} context={CONTEXT} />
               ) : (
-                <p className="play__empty">The cache fills as the model writes.</p>
+                <p className="play__empty">Load the model and write something; the cache fills as it writes.</p>
               ))}
             {view === 'Sampling' &&
               (s.dist ? (
@@ -155,7 +174,6 @@ export function Playground() {
               ))}
           </div>
         </section>
-      )}
     </div>
   )
 }

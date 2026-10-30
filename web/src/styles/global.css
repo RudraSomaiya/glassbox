@@ -8,7 +8,9 @@
   --ink: #121413;
   --ink-2: #444a46;
   --film: #c8692e;
-  --film-ink: #1d0d03;
+  --film-ink: #000000;
+  /* Text on frames past the flip density (FLIP in FilmStrip.tsx). */
+  --film-ink-dense: #ffffff;
   --film-dense: 29 10 2; /* rgb of D-max on the base */
   --film-edge: #9a4818;
   --mark: #c92a22;
@@ -41,6 +43,7 @@
     --ink-2: #b3a899;
     --film: #8a4419;
     --film-ink: #fbeadb;
+    --film-ink-dense: #fbeadb;
     --film-dense: 8 3 0;
     --film-edge: #5c2a0c;
     --mark: #ff6b3d;
@@ -57,6 +60,7 @@
   --ink-2: #b3a899;
   --film: #8a4419;
   --film-ink: #fbeadb;
+  --film-ink-dense: #fbeadb;
   --film-dense: 8 3 0;
   --film-edge: #5c2a0c;
   --mark: #ff6b3d;

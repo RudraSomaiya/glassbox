@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { engine, greedy, MODEL_BYTES, useEngine } from '../engine/client'
 import type { Token } from '../engine/protocol'
-import { density, FilmStrip } from '../views/FilmStrip'
+import { density, FilmStrip, FLIP } from '../views/FilmStrip'
 import { LoadButton } from '../views/LoadButton'
 import hero from '../traces/hero.json'
 import { GITHUB } from '../App'
@@ -78,7 +78,7 @@ export function Landing() {
         </p>
         <ol className="stepwedge" aria-label="Density scale from certain to unlikely">
           {[1, 0.7, 0.5, 0.3, 0.15, 0.08, 0.04, 0.02, 0.01, 0.002].map((p) => (
-            <li key={p} className={density(p) > 0.3 ? 'dense' : ''} style={{ '--d': density(p) } as React.CSSProperties}>
+            <li key={p} className={density(p) > FLIP ? 'dense' : ''} style={{ '--d': density(p) } as React.CSSProperties}>
               <span>{p >= 0.01 ? `${Math.round(p * 100)}%` : `${(p * 100).toFixed(1)}%`}</span>
             </li>
           ))}

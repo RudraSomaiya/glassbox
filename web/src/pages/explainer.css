@@ -48,8 +48,7 @@
     transform var(--slow) var(--ease);
 }
 .step:not(.step--in) .step__figure > * {
-  opacity: 0.15;
-  filter: blur(4px);
+  filter: blur(2px);
   transform: translateY(16px);
 }
 @media (max-width: 860px) {
@@ -86,7 +85,7 @@
 }
 .ex__tok--special {
   background: rgb(var(--film-dense));
-  color: #fbeadb;
+  color: var(--film-ink-dense);
 }
 
 .barcode {

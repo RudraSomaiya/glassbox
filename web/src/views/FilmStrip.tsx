@@ -29,12 +29,22 @@ export function Glyphs({ text }: { text: string }) {
 }
 
 /**
- * Optical density of a frame that lets through fraction p of the light:
- * D = log10(1/p), scaled so D = 3 (p = 0.001) is fully dense.
+ * Optical density of a frame that lets through fraction p of the light,
+ * D = log10(1/p), read off an 11-step wedge (steps of D = 0.3) and scaled so
+ * D = 3 (p = 0.001) is fully dense. Quantizing, as a real step wedge does,
+ * keeps every tone clear of the point where text has to change colour.
  */
 export function density(p: number): number {
-  return Math.min(1, Math.max(0, -Math.log10(Math.max(p, 1e-6)) / 3))
+  const d = Math.min(1, Math.max(0, -Math.log10(Math.max(p, 1e-6)) / 3))
+  return Math.round(d * 10) / 10
 }
+
+/**
+ * Density from which frame text turns light. Between the wedge steps either
+ * side of it, black and white text both keep at least 4.5:1 on the
+ * light-table film; the darkroom film is dark enough for light text throughout.
+ */
+export const FLIP = 0.15
 
 export function pct(p: number): string {
   if (p >= 0.995) return '>99%'
@@ -97,7 +107,7 @@ export function FilmStrip({ tokens, onFork, onInspect, selected, label, live }: 
           <div role="listitem" key={t.index} className="strip__cell">
             <button
               type="button"
-              className={'frame' + (density(t.p) > 0.3 ? ' frame--dense' : '') + (selected === t.index ? ' frame--selected' : '')}
+              className={'frame' + (density(t.p) > FLIP ? ' frame--dense' : '') + (selected === t.index ? ' frame--selected' : '')}
               style={{ '--d': density(t.p) } as React.CSSProperties}
               data-index={t.index}
               data-n={t.index % 5 === 0 ? t.index : undefined}

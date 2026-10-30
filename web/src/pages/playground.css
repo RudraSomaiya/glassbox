@@ -87,3 +87,8 @@
 .play__panel {
   max-width: 980px;
 }
+
+.play__spec {
+  display: grid;
+  gap: 56px;
+}
