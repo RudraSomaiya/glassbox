@@ -275,7 +275,7 @@ impl Tokenizer {
             .chars()
             .map(|c| self.vocab[c.encode_utf8(&mut [0; 4]) as &str])
             .collect();
-        // ponytail: O(n^2) per word; words are short. Add a priority queue if long inputs get slow.
+        // O(n^2) per word; words are short. Add a priority queue if long inputs get slow.
         loop {
             let best = word
                 .windows(2)

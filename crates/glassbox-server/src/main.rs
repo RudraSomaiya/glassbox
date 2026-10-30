@@ -126,7 +126,7 @@ fn main() {
                 history.push(("user".into(), line.trim().into()));
                 let msgs: Vec<(&str, &str)> = history.iter().map(|(r, c)| (r.as_str(), c.as_str())).collect();
                 let prompt = tok.encode(&Tokenizer::chat_prompt(&msgs));
-                // ponytail: re-prefills the whole conversation each turn; reuse the cache if chats get long.
+                // Re-prefills the whole conversation each turn; reuse the cache if chats get long.
                 let mut gen = Generator::new(&model, prompt.len() + 512);
                 let start = prompt.len();
                 let (n, _, secs) = reply(&mut gen, &tok, &mut s, &prompt, 512);

@@ -71,7 +71,7 @@ pub fn spawn_engine(model: &'static Model, config: Config, snapshot: Arc<Mutex<S
                     handle(&mut s, c);
                 }
                 s.step();
-                // ponytail: keeps every TTFT/ITL sample; a long-running server wants a histogram.
+                // Keeps every TTFT/ITL sample; a long-running server wants a histogram.
                 let mut snap = snapshot.lock().unwrap();
                 snap.metrics = s.metrics.clone();
                 snap.queue_depth = s.queue_depth();
