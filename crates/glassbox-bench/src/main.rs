@@ -268,7 +268,9 @@ fn serve_run(model: &Model, config: glassbox_server::scheduler::Config, load: &L
     let q = |v: &[f64], p: f64| {
         let mut v = v.to_vec();
         v.sort_by(|a, b| a.total_cmp(b));
-        v.get(((v.len().max(1) - 1) as f64 * p).round() as usize).copied().unwrap_or(0.0)
+        v.get(((v.len().max(1) - 1) as f64 * p).round() as usize)
+            .copied()
+            .unwrap_or(0.0)
     };
     json!({
         "rate_rps": rate, "requests": load.prompts.len(), "wall_s": wall,
@@ -292,7 +294,9 @@ fn serve(args: &[String]) {
     // prompts 32-320 tokens, replies 32-256.
     let mut lens = glassbox_core::sampler::Rng::new(9);
     let mixed = Load {
-        prompts: (0..n).map(|_| rand_tokens(32 + (lens.next_f32() * 288.0) as usize)).collect(),
+        prompts: (0..n)
+            .map(|_| rand_tokens(32 + (lens.next_f32() * 288.0) as usize))
+            .collect(),
         outputs: (0..n).map(|_| 32 + (lens.next_f32() * 224.0) as usize).collect(),
     };
     // Every request starts with the same 384-token system prompt.
@@ -307,31 +311,58 @@ fn serve(args: &[String]) {
             .collect(),
         outputs: (0..n).map(|_| 16 + (lens.next_f32() * 48.0) as usize).collect(),
     };
-    let batched = Config { token_budget: 512, max_seqs: 32, num_blocks: 4096, prefix_caching: false };
-    let single = Config { max_seqs: 1, ..batched.clone() };
+    let batched = Config {
+        token_budget: 512,
+        max_seqs: 32,
+        num_blocks: 4096,
+        prefix_caching: false,
+    };
+    let single = Config {
+        max_seqs: 1,
+        ..batched.clone()
+    };
     let mut runs = Vec::new();
     for rate in [0.5, 1.0, 2.0, 4.0] {
         for (name, cfg) in [("continuous batching", &batched), ("one at a time", &single)] {
             let r = serve_run(&model, cfg.clone(), &mixed, rate);
-            eprintln!("{name:20} {rate:4} req/s: {:.0} tok/s, TTFT p50 {:.2}s p99 {:.2}s",
-                r["throughput_tok_s"].as_f64().unwrap(), r["ttft_p50_s"].as_f64().unwrap(), r["ttft_p99_s"].as_f64().unwrap());
+            eprintln!(
+                "{name:20} {rate:4} req/s: {:.0} tok/s, TTFT p50 {:.2}s p99 {:.2}s",
+                r["throughput_tok_s"].as_f64().unwrap(),
+                r["ttft_p50_s"].as_f64().unwrap(),
+                r["ttft_p99_s"].as_f64().unwrap()
+            );
             runs.push(json!({"workload": "mixed", "mode": name, "result": r}));
         }
     }
     for rate in [2.0, 8.0] {
         for (name, on) in [("prefix cache", true), ("no prefix cache", false)] {
-            let r = serve_run(&model, Config { prefix_caching: on, ..batched.clone() }, &shared, rate);
-            eprintln!("{name:20} {rate:4} req/s: {:.0} tok/s, TTFT p50 {:.2}s p99 {:.2}s, {} prompt tokens reused",
-                r["throughput_tok_s"].as_f64().unwrap(), r["ttft_p50_s"].as_f64().unwrap(), r["ttft_p99_s"].as_f64().unwrap(),
-                r["prefix_hit_tokens"]);
+            let r = serve_run(
+                &model,
+                Config {
+                    prefix_caching: on,
+                    ..batched.clone()
+                },
+                &shared,
+                rate,
+            );
+            eprintln!(
+                "{name:20} {rate:4} req/s: {:.0} tok/s, TTFT p50 {:.2}s p99 {:.2}s, {} prompt tokens reused",
+                r["throughput_tok_s"].as_f64().unwrap(),
+                r["ttft_p50_s"].as_f64().unwrap(),
+                r["ttft_p99_s"].as_f64().unwrap(),
+                r["prefix_hit_tokens"]
+            );
             runs.push(json!({"workload": "shared system prompt", "mode": name, "result": r}));
         }
     }
-    write(arg(args, "--out"), &json!({"model": dir, "dtype": format!("{:?}", model.layers[0].wqkv.dtype()),
+    write(
+        arg(args, "--out"),
+        &json!({"model": dir, "dtype": format!("{:?}", model.layers[0].wqkv.dtype()),
         "threads": pool::threads(), "workloads": {
             "mixed": "48 requests, prompts 32-320 random tokens, replies 32-256 tokens, greedy, Poisson arrivals",
             "shared system prompt": "48 requests, one 384-token system prompt + 16-64 token user part, replies 16-64 tokens"},
-        "runs": runs, "meta": meta()}));
+        "runs": runs, "meta": meta()}),
+    );
 }
 
 /// Speculative decoding: speedup and acceptance against draft length.
@@ -341,15 +372,24 @@ fn spec(args: &[String]) {
     let tok = glassbox_core::Tokenizer::from_file("models/standin-135M/tokenizer.json").unwrap();
     let text = std::fs::read_to_string("data/perplexity.txt").unwrap_or_default();
     let chat = |u: &str| tok.encode(&glassbox_core::Tokenizer::chat_prompt(&[("user", u)]));
-    let questions = ["Explain how a bicycle stays upright.", "Write a short story about a lighthouse keeper.",
-                     "What are the trade-offs between arrays and linked lists?", "Describe the water cycle."];
+    let questions = [
+        "Explain how a bicycle stays upright.",
+        "Write a short story about a lighthouse keeper.",
+        "What are the trade-offs between arrays and linked lists?",
+        "Describe the water cycle.",
+    ];
     let qa: Vec<Vec<u32>> = questions.iter().map(|q| chat(q)).collect();
     // Summarisation: a passage plus an instruction, where the answer can copy from the prompt.
     let docs: Vec<Vec<u32>> = text
         .split("\n\n")
         .filter(|p| p.len() > 1200)
         .take(4)
-        .map(|p| chat(&format!("{}\n\nSummarise the text above in a few sentences.", &p[..p.len().min(1600)])))
+        .map(|p| {
+            chat(&format!(
+                "{}\n\nSummarise the text above in a few sentences.",
+                &p[..p.len().min(1600)]
+            ))
+        })
         .collect();
     let max = 64;
     let mut out = Vec::new();
@@ -361,7 +401,12 @@ fn spec(args: &[String]) {
         ("135M -> 360M", &mid, Drafter::Model(&small), &qa),
         ("135M -> 1.7B", &big, Drafter::Model(&small), &qa),
         ("1.7B Q4_0 -> 1.7B Q8_0", &big, Drafter::Model(&big4), &qa),
-        ("prompt lookup -> 360M (summaries)", &mid, Drafter::Lookup { ngram: 3 }, &docs),
+        (
+            "prompt lookup -> 360M (summaries)",
+            &mid,
+            Drafter::Lookup { ngram: 3 },
+            &docs,
+        ),
     ];
     for (name, target, drafter, prompts) in cases {
         let t = Instant::now();
@@ -374,7 +419,15 @@ fn spec(args: &[String]) {
             let t = Instant::now();
             let (mut n, mut drafted, mut accepted, mut passes) = (0, 0, 0, 0);
             for p in prompts.iter() {
-                let (o, st) = generate(target, &drafter, p, max, k, glassbox_core::SamplerConfig::default(), None);
+                let (o, st) = generate(
+                    target,
+                    &drafter,
+                    p,
+                    max,
+                    k,
+                    glassbox_core::SamplerConfig::default(),
+                    None,
+                );
                 n += o.len();
                 drafted += st.drafted;
                 accepted += st.accepted;
@@ -382,15 +435,24 @@ fn spec(args: &[String]) {
             }
             let tps = n as f64 / t.elapsed().as_secs_f64();
             let acc = accepted as f64 / drafted.max(1) as f64;
-            eprintln!("{name:34} k={k}: {tps:6.1} tok/s vs {base:6.1} alone ({:.2}x), acceptance {:.0}%", tps / base, acc * 100.0);
-            out.push(json!({"pair": name, "k": k, "tok_s": tps, "baseline_tok_s": base, "speedup": tps / base,
+            eprintln!(
+                "{name:34} k={k}: {tps:6.1} tok/s vs {base:6.1} alone ({:.2}x), acceptance {:.0}%",
+                tps / base,
+                acc * 100.0
+            );
+            out.push(
+                json!({"pair": name, "k": k, "tok_s": tps, "baseline_tok_s": base, "speedup": tps / base,
                             "acceptance": acc, "drafted": drafted, "accepted": accepted, "target_passes": passes,
-                            "tokens": n}));
+                            "tokens": n}),
+            );
         }
     }
-    write(arg(args, "--out"), &json!({"max_tokens": max, "decoding": "greedy", "runs": out, "threads": pool::threads(),
+    write(
+        arg(args, "--out"),
+        &json!({"max_tokens": max, "decoding": "greedy", "runs": out, "threads": pool::threads(),
         "note": "stand-in random weights: acceptance between different random models is near zero by construction; the Q4_0 -> Q8_0 pair is the same model at two precisions",
-        "meta": meta()}));
+        "meta": meta()}),
+    );
 }
 
 fn kernels() {

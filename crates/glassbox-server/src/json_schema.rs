@@ -22,9 +22,17 @@ use std::sync::Arc;
 enum Node {
     /// `{"a":` value `,"b":` value `}`, as alternating fixed bytes and values.
     Obj(Vec<(Vec<u8>, Arc<Node>)>),
-    Arr { item: Arc<Node>, min: usize, max: usize },
-    Str { max: usize },
-    Num { integer: bool },
+    Arr {
+        item: Arc<Node>,
+        min: usize,
+        max: usize,
+    },
+    Str {
+        max: usize,
+    },
+    Num {
+        integer: bool,
+    },
     /// One of a fixed set of JSON texts (enum, boolean, null).
     Lit(Arc<Vec<Vec<u8>>>),
 }
@@ -35,16 +43,25 @@ fn compile(schema: &Value) -> Result<Arc<Node>, String> {
         if opts.is_empty() {
             return Err("enum is empty".into());
         }
-        return Ok(Arc::new(Node::Lit(Arc::new(opts.iter().map(|v| v.to_string().into_bytes()).collect()))));
+        return Ok(Arc::new(Node::Lit(Arc::new(
+            opts.iter().map(|v| v.to_string().into_bytes()).collect(),
+        ))));
     }
-    let ty = schema.get("type").and_then(|t| t.as_str()).ok_or("every schema needs a type or an enum")?;
+    let ty = schema
+        .get("type")
+        .and_then(|t| t.as_str())
+        .ok_or("every schema needs a type or an enum")?;
     Ok(Arc::new(match ty {
         "object" => {
             let props = schema.get("properties").and_then(|p| p.as_object());
             let mut fields = Vec::new();
             for (i, (name, sub)) in props.into_iter().flatten().enumerate() {
                 let key = serde_json::to_string(name).unwrap();
-                let lead = if i == 0 { format!("{{{key}:") } else { format!(",{key}:") };
+                let lead = if i == 0 {
+                    format!("{{{key}:")
+                } else {
+                    format!(",{key}:")
+                };
                 fields.push((lead.into_bytes(), compile(sub)?));
             }
             for r in schema.get("required").and_then(|r| r.as_array()).into_iter().flatten() {
@@ -58,10 +75,16 @@ fn compile(schema: &Value) -> Result<Arc<Node>, String> {
         "array" => {
             let item = compile(schema.get("items").ok_or("array needs items")?)?;
             let min = schema.get("minItems").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
-            let max = schema.get("maxItems").and_then(|v| v.as_u64()).unwrap_or(8).max(min as u64) as usize;
+            let max = schema
+                .get("maxItems")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(8)
+                .max(min as u64) as usize;
             Node::Arr { item, min, max }
         }
-        "string" => Node::Str { max: schema.get("maxLength").and_then(|v| v.as_u64()).unwrap_or(256) as usize },
+        "string" => Node::Str {
+            max: schema.get("maxLength").and_then(|v| v.as_u64()).unwrap_or(256) as usize,
+        },
         "number" => Node::Num { integer: false },
         "integer" => Node::Num { integer: true },
         "boolean" => Node::Lit(Arc::new(vec![b"true".to_vec(), b"false".to_vec()])),
@@ -85,11 +108,28 @@ enum Frame {
     Value(Arc<Node>),
     Bytes(Arc<[u8]>, usize),
     /// Inside a string: bytes so far, cap, whether the last byte was a backslash.
-    Str { len: usize, max: usize, escape: bool },
-    Num { integer: bool, phase: NumPhase, digits: usize },
-    Lit { opts: Arc<Vec<Vec<u8>>>, pos: usize, alive: u64 },
+    Str {
+        len: usize,
+        max: usize,
+        escape: bool,
+    },
+    Num {
+        integer: bool,
+        phase: NumPhase,
+        digits: usize,
+    },
+    Lit {
+        opts: Arc<Vec<Vec<u8>>>,
+        pos: usize,
+        alive: u64,
+    },
     /// Between array items, `count` done so far.
-    Items { item: Arc<Node>, count: usize, min: usize, max: usize },
+    Items {
+        item: Arc<Node>,
+        count: usize,
+        min: usize,
+        max: usize,
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -199,7 +239,11 @@ impl State {
                         *alive = next;
                         *pos += 1;
                         // Done as soon as the only survivors are complete.
-                        if opts.iter().enumerate().all(|(i, o)| next & (1 << i) == 0 || o.len() == *pos) {
+                        if opts
+                            .iter()
+                            .enumerate()
+                            .all(|(i, o)| next & (1 << i) == 0 || o.len() == *pos)
+                        {
                             self.0.pop();
                         }
                         return true;
@@ -254,17 +298,38 @@ impl State {
                 }
             }
             Node::Arr { item, min, max } => {
-                self.0.push(Frame::Items { item: item.clone(), count: 0, min: *min, max: *max });
+                self.0.push(Frame::Items {
+                    item: item.clone(),
+                    count: 0,
+                    min: *min,
+                    max: *max,
+                });
                 self.0.push(Frame::Bytes(Arc::from(&b"["[..]), 0));
             }
             Node::Str { max } => {
-                self.0.push(Frame::Str { len: 0, max: *max, escape: false });
+                self.0.push(Frame::Str {
+                    len: 0,
+                    max: *max,
+                    escape: false,
+                });
                 self.0.push(Frame::Bytes(Arc::from(&b"\""[..]), 0));
             }
-            Node::Num { integer } => self.0.push(Frame::Num { integer: *integer, phase: NumPhase::Start, digits: 0 }),
+            Node::Num { integer } => self.0.push(Frame::Num {
+                integer: *integer,
+                phase: NumPhase::Start,
+                digits: 0,
+            }),
             Node::Lit(opts) => {
-                let alive = if opts.len() >= 64 { u64::MAX } else { (1u64 << opts.len()) - 1 };
-                self.0.push(Frame::Lit { opts: opts.clone(), pos: 0, alive })
+                let alive = if opts.len() >= 64 {
+                    u64::MAX
+                } else {
+                    (1u64 << opts.len()) - 1
+                };
+                self.0.push(Frame::Lit {
+                    opts: opts.clone(),
+                    pos: 0,
+                    alive,
+                })
             }
         }
     }
@@ -276,7 +341,9 @@ impl State {
 }
 
 fn lit_complete(opts: &[Vec<u8>], pos: usize, alive: u64) -> bool {
-    opts.iter().enumerate().any(|(i, o)| alive & (1 << i) != 0 && o.len() == pos)
+    opts.iter()
+        .enumerate()
+        .any(|(i, o)| alive & (1 << i) != 0 && o.len() == pos)
 }
 
 /// Every token's bytes as a trie, built once per vocabulary.
@@ -323,7 +390,15 @@ impl Trie {
                 other.push(id as u32);
             }
         }
-        Trie { children, ends, plain, longest_plain, other, vocab, eos }
+        Trie {
+            children,
+            ends,
+            plain,
+            longest_plain,
+            other,
+            vocab,
+            eos,
+        }
     }
 
     /// Tokens that keep the output a valid prefix of a schema-valid document.
@@ -367,7 +442,11 @@ pub struct JsonConstraint {
 
 impl JsonConstraint {
     pub fn new(schema: &Value, trie: Arc<Trie>) -> Result<Self, String> {
-        Ok(JsonConstraint { state: State::new(compile(schema)?), trie, allowed: Vec::new() })
+        Ok(JsonConstraint {
+            state: State::new(compile(schema)?),
+            trie,
+            allowed: Vec::new(),
+        })
     }
 }
 
@@ -417,7 +496,8 @@ pub fn validate(schema: &Value, v: &Value) -> bool {
                 .flatten()
                 .all(|r| o.contains_key(r.as_str().unwrap_or("")));
             required_ok
-                && o.iter().all(|(k, val)| props.and_then(|p| p.get(k)).is_some_and(|s| validate(s, val)))
+                && o.iter()
+                    .all(|(k, val)| props.and_then(|p| p.get(k)).is_some_and(|s| validate(s, val)))
         }
         Some("array") => {
             let Some(a) = v.as_array() else { return false };
@@ -426,7 +506,10 @@ pub fn validate(schema: &Value, v: &Value) -> bool {
             a.len() >= min && a.len() <= max && a.iter().all(|x| validate(&schema["items"], x))
         }
         Some("string") => v.as_str().is_some_and(|s| {
-            schema.get("maxLength").and_then(|m| m.as_u64()).is_none_or(|m| s.chars().count() as u64 <= m)
+            schema
+                .get("maxLength")
+                .and_then(|m| m.as_u64())
+                .is_none_or(|m| s.chars().count() as u64 <= m)
         }),
         Some("number") => v.is_number(),
         // JSON Schema: an integer is any number with no fractional part (-0 included).

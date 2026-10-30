@@ -284,13 +284,19 @@ fn main() {
             let t0 = Instant::now();
             let (out, stats) = generate(&model, &drafter, &prompt, n, k, Default::default(), Some(tok.eos_id));
             let spec_s = t0.elapsed().as_secs_f64();
-            assert_eq!(out[..], alone[..out.len()], "speculative output differs from the target alone");
+            assert_eq!(
+                out[..],
+                alone[..out.len()],
+                "speculative output differs from the target alone"
+            );
             let t = |id: u32| tok.decode(&[id]);
             let rounds: Vec<_> = stats
                 .rounds
                 .iter()
-                .map(|r| json!({"drafted": r.drafted.iter().map(|&d| t(d)).collect::<Vec<_>>(),
-                                "accepted": r.accepted, "next": t(r.next)}))
+                .map(|r| {
+                    json!({"drafted": r.drafted.iter().map(|&d| t(d)).collect::<Vec<_>>(),
+                                "accepted": r.accepted, "next": t(r.next)})
+                })
                 .collect();
             let dir = args.get("--model").unwrap();
             let v = json!({
@@ -305,7 +311,13 @@ fn main() {
                 "alone_s": alone_s, "spec_s": spec_s,
             });
             std::fs::write(args.get("--out").unwrap_or_else(|| die(USAGE)), v.to_string()).expect("write");
-            eprintln!("{} tokens in {} target passes, acceptance {:.0}%, {:.2}x", out.len(), stats.target_passes, stats.acceptance() * 100.0, alone_s / spec_s);
+            eprintln!(
+                "{} tokens in {} target passes, acceptance {:.0}%, {:.2}x",
+                out.len(),
+                stats.target_passes,
+                stats.acceptance() * 100.0,
+                alone_s / spec_s
+            );
         }
         Some("serve") => {
             let (model, tok) = load(&args);
@@ -320,7 +332,11 @@ fn main() {
             let vocab: std::sync::Arc<Vec<Vec<u8>>> =
                 std::sync::Arc::new((0..tok.vocab_size() as u32).map(|t| tok.token_bytes(t)).collect());
             let special: Vec<bool> = (0..tok.vocab_size() as u32).map(|t| tok.is_special(t)).collect();
-            let trie = std::sync::Arc::new(glassbox_server::json_schema::Trie::new(vocab.clone(), &special, tok.eos_id));
+            let trie = std::sync::Arc::new(glassbox_server::json_schema::Trie::new(
+                vocab.clone(),
+                &special,
+                tok.eos_id,
+            ));
             let dir = args.get("--model").unwrap();
             let state = glassbox_server::http::AppState {
                 tx: glassbox_server::http::spawn_engine(model, config, std::sync::Arc::clone(&snapshot)),

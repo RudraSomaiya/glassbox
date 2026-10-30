@@ -13,8 +13,33 @@ use std::sync::Arc;
 fn vocab() -> Vec<Vec<u8>> {
     let mut v: Vec<Vec<u8>> = (32u8..127).map(|b| vec![b]).collect();
     for s in [
-        "{\"", "\":", "\",", "\"}", "\"]", "},", "}]", "true", "false", "null", "12", "3.", ".5", "-1", "ab", "the",
-        " cat", "é", "\\n", "\\\"", "name", "\"name\":", "[1", "0,", "],", ", ", "\n",
+        "{\"",
+        "\":",
+        "\",",
+        "\"}",
+        "\"]",
+        "},",
+        "}]",
+        "true",
+        "false",
+        "null",
+        "12",
+        "3.",
+        ".5",
+        "-1",
+        "ab",
+        "the",
+        " cat",
+        "é",
+        "\\n",
+        "\\\"",
+        "name",
+        "\"name\":",
+        "[1",
+        "0,",
+        "],",
+        ", ",
+        "\n",
     ] {
         v.push(s.as_bytes().to_vec());
     }
@@ -39,8 +64,9 @@ fn rand_schema(rng: &mut Rng, depth: usize) -> Value {
         5 => json!({"type": "null"}),
         6 => {
             let k = n(rng);
-            let props: serde_json::Map<String, Value> =
-                (0..k).map(|i| (format!("f{i}_{}", depth), rand_schema(rng, depth + 1))).collect();
+            let props: serde_json::Map<String, Value> = (0..k)
+                .map(|i| (format!("f{i}_{}", depth), rand_schema(rng, depth + 1)))
+                .collect();
             let required: Vec<String> = props.keys().filter(|_| rng.next_f32() < 0.6).cloned().collect();
             json!({"type": "object", "properties": props, "required": required})
         }
@@ -72,7 +98,15 @@ fn two_hundred_random_schemas_always_validate() {
         max_position_embeddings: 8192,
     };
     let model = Model::random(config, 3);
-    let mut s = Scheduler::new(&model, scheduler::Config { token_budget: 256, max_seqs: 16, num_blocks: 2048, prefix_caching: true });
+    let mut s = Scheduler::new(
+        &model,
+        scheduler::Config {
+            token_budget: 256,
+            max_seqs: 16,
+            num_blocks: 2048,
+            prefix_caching: true,
+        },
+    );
     let mut rng = Rng::new(2024);
     let mut jobs = Vec::new();
     for i in 0..200 {
@@ -82,7 +116,11 @@ fn two_hundred_random_schemas_always_validate() {
         s.submit(Request {
             prompt: vec![(i % 90) as u32, 7, 9],
             max_tokens: 4000,
-            sampler: SamplerConfig { temperature: 1.0, seed: i, ..Default::default() },
+            sampler: SamplerConfig {
+                temperature: 1.0,
+                seed: i,
+                ..Default::default()
+            },
             stop: vec![eos],
             sink,
             constraint: Some(Box::new(c)),
@@ -101,7 +139,11 @@ fn two_hundred_random_schemas_always_validate() {
                 Event::Done { reason, .. } => finished = Some(reason),
             }
         }
-        assert_eq!(finished, Some(scheduler::Finish::Stop), "schema {schema} did not finish");
+        assert_eq!(
+            finished,
+            Some(scheduler::Finish::Stop),
+            "schema {schema} did not finish"
+        );
         let text = String::from_utf8(bytes).expect("utf-8");
         let v: Value = serde_json::from_str(&text).unwrap_or_else(|e| panic!("{e}: {text} for {schema}"));
         assert!(validate(&schema, &v), "{text} does not validate against {schema}");

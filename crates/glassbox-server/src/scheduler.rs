@@ -95,7 +95,9 @@ impl Seq {
 
 /// Wall-clock milliseconds, so step records and request arrivals share a time base.
 pub fn unix_ms() -> f64 {
-    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0.0, |d| d.as_secs_f64() * 1e3)
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0.0, |d| d.as_secs_f64() * 1e3)
 }
 
 /// What one step did, for the scheduler view's replay trace.
