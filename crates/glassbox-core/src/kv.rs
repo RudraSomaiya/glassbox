@@ -26,6 +26,8 @@ pub struct KvCache {
     /// Blocks no sequence uses, kept for prefix reuse until space is needed.
     /// Oldest first.
     cached: Vec<u32>,
+    /// Automatic prefix sharing; off for the "no prefix cache" benchmark.
+    pub share_prefixes: bool,
 }
 
 #[derive(Clone, Default)]
@@ -67,6 +69,7 @@ impl KvCache {
             by_hash: HashMap::new(),
             block_hash: vec![None; num_blocks],
             cached: Vec::new(),
+            share_prefixes: true,
         }
     }
 
@@ -137,7 +140,7 @@ impl KvCache {
         };
         let mut h = 0;
         for chunk in prompt.chunks_exact(BLOCK) {
-            if (seq.blocks.len() + 1) * BLOCK >= prompt.len() {
+            if !self.share_prefixes || (seq.blocks.len() + 1) * BLOCK >= prompt.len() {
                 break;
             }
             h = chain_hash(h, chunk);
@@ -204,6 +207,9 @@ impl KvCache {
         if seq.tokens.len() < seq.len {
             seq.tokens.truncate(start);
             seq.tokens.extend_from_slice(tokens);
+        }
+        if !self.share_prefixes {
+            return;
         }
         let first_full = start / BLOCK;
         let last_full = seq.len / BLOCK;

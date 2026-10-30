@@ -10,6 +10,7 @@ dependencies = [
     "safetensors>=0.4",
     "numpy",
     "gguf",
+    "pyarrow",
 ]
 
 [tool.uv]

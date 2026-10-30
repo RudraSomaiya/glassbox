@@ -119,6 +119,47 @@ struct SyncPtr<T>(*mut T);
 unsafe impl<T> Sync for SyncPtr<T> {}
 
 impl Model {
+    /// A model with random weights: tiny ones make the scheduler and
+    /// speculative-decoding tests fast and download-free.
+    pub fn random(config: Config, seed: u64) -> Model {
+        let mut rng = crate::sampler::Rng::new(seed);
+        let mut mat = |rows: usize, cols: usize| {
+            let scale = 1.0 / (cols as f32).sqrt();
+            Matrix::f32(
+                rows,
+                cols,
+                (0..rows * cols)
+                    .map(|_| (rng.next_f32() * 2.0 - 1.0) * scale * 1.7)
+                    .collect(),
+            )
+        };
+        let (d, i, kv, q) = (
+            config.hidden_size,
+            config.intermediate_size,
+            config.kv_dim(),
+            config.num_attention_heads * config.head_dim(),
+        );
+        let layers = (0..config.num_hidden_layers)
+            .map(|_| Layer {
+                attn_norm: vec![1.0; d],
+                wqkv: Matrix::concat(&[mat(q, d), mat(kv, d), mat(kv, d)]),
+                wo: mat(d, q),
+                mlp_norm: vec![1.0; d],
+                w_gate_up: Matrix::concat(&[mat(i, d), mat(i, d)]),
+                w_down: mat(d, i),
+            })
+            .collect();
+        let embed = mat(config.vocab_size, d);
+        Model {
+            embed,
+            layers,
+            norm: vec![1.0; d],
+            lm_head: None,
+            config,
+            rope_interleaved: false,
+        }
+    }
+
     pub fn quantize(&mut self, to: DType) {
         for l in &mut self.layers {
             for m in [&mut l.wqkv, &mut l.wo, &mut l.w_gate_up, &mut l.w_down] {

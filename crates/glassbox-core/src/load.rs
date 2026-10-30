@@ -1,6 +1,6 @@
 //! Weight loading: Hugging Face safetensors (f32/f16/bf16) and GGUF (F32, F16, Q8_0, Q4_0).
 
-use crate::kernels::{Matrix, Weights};
+use crate::kernels::{DType, Matrix, Weights};
 use crate::model::{Config, Layer, Model};
 use crate::quant::{BlockQ4_0, BlockQ8_0, QK};
 use half::{bf16, f16};
@@ -28,8 +28,10 @@ fn to_f32(dtype: Dtype, data: &[u8]) -> Result<Vec<f32>, Error> {
 }
 
 impl Model {
-    /// Build a model from a `config.json` string and safetensors bytes.
-    pub fn from_safetensors(config: &str, bytes: &[u8]) -> Result<Model, Error> {
+    /// Build a model from a `config.json` string and safetensors bytes. With
+    /// `quant`, each matrix is quantized as soon as it's read, so peak memory
+    /// stays near the file size (this is how the browser loads 135M).
+    pub fn from_safetensors(config: &str, bytes: &[u8], quant: Option<DType>) -> Result<Model, Error> {
         let config = Config::from_json(config)?;
         let st = SafeTensors::deserialize(bytes)?;
         let get = |name: &str| -> Result<(Vec<usize>, Vec<f32>), Error> {
@@ -38,7 +40,11 @@ impl Model {
         };
         let mat = |name: &str| -> Result<Matrix, Error> {
             let (shape, w) = get(name)?;
-            Ok(Matrix::f32(shape[0], shape[1], w))
+            let m = Matrix::f32(shape[0], shape[1], w);
+            Ok(match quant {
+                Some(q) => m.quantize(q),
+                None => m,
+            })
         };
         let vec = |name: &str| -> Result<Vec<f32>, Error> { Ok(get(name)?.1) };
         let layers = (0..config.num_hidden_layers)
@@ -86,7 +92,7 @@ impl Model {
         // SAFETY: the file is opened read-only and not modified while mapped;
         // the map is dropped before this function returns.
         let map = unsafe { memmap2::Mmap::map(&file)? };
-        Model::from_safetensors(&config, &map)
+        Model::from_safetensors(&config, &map, None)
     }
 
     #[cfg(not(target_arch = "wasm32"))]

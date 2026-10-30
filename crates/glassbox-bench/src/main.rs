@@ -9,6 +9,7 @@ use std::time::Instant;
 const USAGE: &str = "usage:
   glassbox-bench single      --model DIR [--gguf FILE] [--dtype f32|q8_0|q4_0] [--threads N] [--label L] [--out FILE]
   glassbox-bench progression --model DIR [--out FILE]
+  glassbox-bench quality     --model DIR --file TEXT [--ctx 512] [--chunks 100] [--out FILE]
   glassbox-bench kernels";
 
 fn arg<'a>(args: &'a [String], name: &str) -> Option<&'a str> {
@@ -154,6 +155,65 @@ fn progression(args: &[String]) {
     );
 }
 
+/// Perplexity the way llama.cpp's `llama-perplexity` computes it: split the
+/// tokens into `ctx`-sized chunks, run each chunk from an empty cache, and
+/// score only the second half of each chunk (so every scored token has at
+/// least ctx/2 tokens of context). Also returns, per scored position, the
+/// argmax, to compare quantized models against f32.
+fn perplexity(model: &Model, tokens: &[u32], ctx: usize, chunks: usize) -> (f64, Vec<u32>) {
+    let vocab = model.config.vocab_size;
+    let (mut nll, mut count, mut top1) = (0f64, 0usize, Vec::new());
+    for chunk in tokens.chunks_exact(ctx).take(chunks) {
+        let mut g = Generator::new(model, ctx);
+        g.cache.reserve(0, ctx).unwrap();
+        let pos: Vec<usize> = (0..ctx).collect();
+        let want: Vec<usize> = (ctx / 2..ctx - 1).collect();
+        let logits = model.forward(chunk, &pos, &vec![0; ctx], &want, &mut g.cache, None);
+        for (j, &i) in want.iter().enumerate() {
+            let row = &logits[j * vocab..(j + 1) * vocab];
+            let max = row.iter().fold(f32::NEG_INFINITY, |m, &v| m.max(v));
+            let lse = max as f64 + row.iter().map(|&v| ((v - max) as f64).exp()).sum::<f64>().ln();
+            nll += lse - row[chunk[i + 1] as usize] as f64;
+            count += 1;
+            top1.push(glassbox_core::sampler::argmax(row) as u32);
+        }
+    }
+    ((nll / count as f64).exp(), top1)
+}
+
+fn quality(args: &[String]) {
+    let dir = arg(args, "--model").expect(USAGE);
+    let ctx: usize = arg(args, "--ctx").and_then(|v| v.parse().ok()).unwrap_or(512);
+    let chunks: usize = arg(args, "--chunks").and_then(|v| v.parse().ok()).unwrap_or(100);
+    let file = arg(args, "--file").expect(USAGE);
+    let text = std::fs::read_to_string(file).expect("read text");
+    let tok = glassbox_core::Tokenizer::from_file(std::path::Path::new(dir).join("tokenizer.json")).unwrap();
+    let tokens = tok.encode(&text);
+    let chunks = chunks.min(tokens.len() / ctx);
+    let mut rows = Vec::new();
+    let mut reference = Vec::new();
+    for dtype in ["f32", "q8_0", "q4_0"] {
+        let model = load(dir, None, Some(dtype));
+        let t = Instant::now();
+        let (ppl, top1) = perplexity(&model, &tokens, ctx, chunks);
+        if dtype == "f32" {
+            reference = top1.clone();
+        }
+        let agree = top1.iter().zip(&reference).filter(|(a, b)| a == b).count() as f64 / top1.len() as f64;
+        eprintln!(
+            "{dtype}: ppl {ppl:.4}, top-1 agreement with f32 {:.2}% ({:.0}s)",
+            agree * 100.0,
+            t.elapsed().as_secs_f64()
+        );
+        rows.push(json!({"dtype": dtype, "ppl": ppl, "top1_agreement_vs_f32": agree, "weight_mb": model.weight_bytes() as f64 / 1e6}));
+    }
+    write(
+        arg(args, "--out"),
+        &json!({"model": dir, "text": file, "ctx": ctx, "chunks": chunks, "scored_tokens": chunks * (ctx / 2 - 1),
+                "results": rows, "meta": meta()}),
+    );
+}
+
 fn kernels() {
     for (rows, cols) in [(576, 576), (1536, 576), (576, 1536), (49152, 576)] {
         let w: Vec<f32> = (0..rows * cols)
@@ -188,6 +248,7 @@ fn main() {
     match args.first().map(|s| s.as_str()) {
         Some("single") => single(&args),
         Some("progression") => progression(&args),
+        Some("quality") => quality(&args),
         Some("kernels") => kernels(),
         _ => eprintln!("{USAGE}"),
     }

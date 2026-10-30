@@ -117,3 +117,59 @@ fn logits_and_greedy_match_hf() {
         eprintln!("{}: max |logit diff| {worst:.2e}", dir.display());
     }
 }
+
+/// GGUF files from `tools/reference/to_gguf.py` hold the same weights in
+/// llama.cpp's layout (Q/K rows permuted for interleaved RoPE). The f32 file
+/// must give the reference greedy output, and our Q8_0 quantizer must produce
+/// exactly the blocks ggml's reference quantizer wrote.
+#[test]
+fn gguf_matches_safetensors() {
+    use glassbox_core::kernels::Weights;
+    for dir in model_dirs() {
+        if !dir.join("model-q8_0.gguf").exists() {
+            continue;
+        }
+        let g = load(dir.join("golden.json"));
+        let case = &g["cases"][0];
+        let ids: Vec<u32> = case["ids"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_u64().unwrap() as u32)
+            .collect();
+        let want: Vec<u32> = case["greedy"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_u64().unwrap() as u32)
+            .collect();
+        let f32 = Model::load_gguf(dir.join("model-f32.gguf")).unwrap();
+        assert_eq!(
+            glassbox_core::greedy(&f32, &ids, 32),
+            want[..32],
+            "{}: gguf f32 greedy",
+            dir.display()
+        );
+
+        let q8 = Model::load_gguf(dir.join("model-q8_0.gguf")).unwrap();
+        let mut ours = Model::load_dir(&dir).unwrap();
+        ours.quantize(glassbox_core::DType::Q8_0);
+        let (Weights::Q8_0(a), Weights::Q8_0(b)) = (&q8.embed.w, &ours.embed.w) else {
+            panic!("not q8")
+        };
+        let same = a.iter().zip(b).filter(|(x, y)| x == y).count();
+        assert_eq!(
+            same,
+            a.len(),
+            "{}: {} of {} Q8_0 blocks differ",
+            dir.display(),
+            a.len() - same,
+            a.len()
+        );
+        eprintln!(
+            "{}: gguf f32 greedy matches; {} Q8_0 embedding blocks identical",
+            dir.display(),
+            a.len()
+        );
+    }
+}
