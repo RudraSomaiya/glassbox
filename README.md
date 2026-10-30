@@ -50,9 +50,13 @@ Serving, 48 chat-sized requests (prompts 32-320 tokens, replies 32-256) arriving
 
 Above about 1 request a second the engine is saturated: batched decode is limited by the same matrix kernel that makes prefill slow. With a shared 384-token system prompt at 2 requests a second, the prefix cache cuts median time to first token from 26.3 s to 0.23 s and triples throughput (23 to 71 tokens/s).
 
-SPEC_RESULTS
+Speculative decoding (greedy, output identical to the target alone; speedup in decode time):
 
-In headless Chromium on the same VM, single-threaded WebAssembly runs the 135M shapes at Q8_0 at BROWSER_TOKS tokens per second.
+![Speculative decoding speedup](bench/results/charts/speculative.svg)
+
+The honest summary: on stand-in weights it mostly loses. Two different random models agree 0% of the time, and even a 4-bit copy of the same random 1.7B agrees only 4% (random logits are nearly tied). The trained tiny stand-in drafts well (78-94% accepted) but is too small for a drafter to be cheaper (0.76-0.93x). Prompt lookup, which needs no second model, wins where the output copies the input: 1.45-1.80x at 99% acceptance on the 360M shapes. Checking several tokens in one pass is not free here either: two tokens cost about 1.6 times one, because the kernel is compute-bound. Real weights will change the acceptance numbers; the scripts re-run them.
+
+In headless Chromium on the same VM, single-threaded WebAssembly runs the 135M shapes at Q8_0 at 24.7 tokens per second (laptops will differ; this is a headless 4-vCPU VM).
 
 ## Quick start
 
