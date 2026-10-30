@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "commit": "a3f6389",
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "date": "2026-10-30T14:04:31Z",
+    "logical_cpus": 4,
+    "simd": true
+  },
+  "model": "models/standin-135M",
+  "steps": [
+    {
+      "dtype": "f32",
+      "pp64_tok_s": 14.659939654391222,
+      "simd": false,
+      "step": "scalar, 1 thread",
+      "tg32_sd": 0.22053287318348058,
+      "tg32_tok_s": 8.523116224769502,
+      "threads": 1
+    },
+    {
+      "dtype": "f32",
+      "pp64_tok_s": 186.69138761239094,
+      "simd": true,
+      "step": "AVX2, 1 thread",
+      "tg32_sd": 0.043982027556833,
+      "tg32_tok_s": 22.276509273185486,
+      "threads": 1
+    },
+    {
+      "dtype": "f32",
+      "pp64_tok_s": 447.41304517205947,
+      "simd": true,
+      "step": "AVX2, 4 threads",
+      "tg32_sd": 0.16842162955071416,
+      "tg32_tok_s": 65.11689971692974,
+      "threads": 4
+    },
+    {
+      "dtype": "q8_0",
+      "pp64_tok_s": 396.1633693371496,
+      "simd": true,
+      "step": "Q8_0 int8 dot",
+      "tg32_sd": 12.190614505610583,
+      "tg32_tok_s": 177.53373788795096,
+      "threads": 4
+    },
+    {
+      "dtype": "q4_0",
+      "pp64_tok_s": 395.4542014286329,
+      "simd": true,
+      "step": "Q4_0 int8 dot",
+      "tg32_sd": 10.41515591108633,
+      "tg32_tok_s": 211.99473856021444,
+      "threads": 4
+    }
+  ]
+}

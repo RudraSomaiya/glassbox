@@ -1,0 +1,34 @@
+{
+  "chunks": 100,
+  "ctx": 512,
+  "meta": {
+    "commit": "ee9e6d7",
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "date": "2026-10-30T14:14:36Z",
+    "logical_cpus": 4,
+    "simd": true
+  },
+  "model": "models/standin-135M",
+  "results": [
+    {
+      "dtype": "f32",
+      "ppl": 54636.987364381,
+      "top1_agreement_vs_f32": 1.0,
+      "weight_mb": 537.919488
+    },
+    {
+      "dtype": "q8_0",
+      "ppl": 54689.436679289836,
+      "top1_agreement_vs_f32": 0.9238039215686275,
+      "weight_mb": 142.884864
+    },
+    {
+      "dtype": "q4_0",
+      "ppl": 54163.45988029562,
+      "top1_agreement_vs_f32": 0.28690196078431374,
+      "weight_mb": 75.644928
+    }
+  ],
+  "scored_tokens": 25500,
+  "text": "data/perplexity.txt"
+}

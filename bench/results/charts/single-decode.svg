@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1020 390" width="1020" height="390" role="img" aria-labelledby="t">
+<style>
+  .bg { fill: #fbfcfb } .ink { fill: #121413 } .ink2 { fill: #444a46 } .grid { stroke: #dfe3df }
+  .glassbox { fill: #c8692e } .llamacpp { fill: #2f72a8 } .transformers { fill: #6f8a2a }
+  text { font-family: Archivo, system-ui, sans-serif; font-variant-numeric: tabular-nums }
+  @media (prefers-color-scheme: dark) {
+    .bg { fill: #1c1814 } .ink { fill: #efe7da } .ink2 { fill: #b3a899 } .grid { stroke: #3a332c }
+    .llamacpp { fill: #3f86c4 } .transformers { fill: #7f9a35 }
+  }
+</style>
+<title id="t">Decode speed, one stream (tg128)</title>
+<rect width="1020" height="390" class="bg"/>
+<text x="24.0" y="32.0" class="ink" font-size="18" text-anchor="start" font-weight="700">Decode speed, one stream (tg128)</text>
+<text x="24.0" y="54.0" class="ink2" font-size="13" text-anchor="start" font-weight="400">Tokens per second, higher is better. 4 vCPU Xeon (Emerald Rapids), 4 threads. Same GGUF weights for Glassbox and llama.cpp.</text>
+<rect x="24" y="70" width="12" height="12" rx="2" class="glassbox"/>
+<text x="42.0" y="80.0" class="ink" font-size="13" text-anchor="start" font-weight="400">Glassbox</text>
+<rect x="114.0" y="70" width="12" height="12" rx="2" class="llamacpp"/>
+<text x="132.0" y="80.0" class="ink" font-size="13" text-anchor="start" font-weight="400">llama.cpp</text>
+<rect x="211.5" y="70" width="12" height="12" rx="2" class="transformers"/>
+<text x="229.5" y="80.0" class="ink" font-size="13" text-anchor="start" font-weight="400">transformers</text>
+<line x1="48" x2="348" y1="326.0" y2="326.0" class="grid" stroke-width="1"/>
+<text x="42.0" y="330.0" class="ink2" font-size="11" text-anchor="end" font-weight="400">0</text>
+<line x1="48" x2="348" y1="268.5" y2="268.5" class="grid" stroke-width="1"/>
+<text x="42.0" y="272.5" class="ink2" font-size="11" text-anchor="end" font-weight="400">250</text>
+<line x1="48" x2="348" y1="211.0" y2="211.0" class="grid" stroke-width="1"/>
+<text x="42.0" y="215.0" class="ink2" font-size="11" text-anchor="end" font-weight="400">500</text>
+<line x1="48" x2="348" y1="153.5" y2="153.5" class="grid" stroke-width="1"/>
+<text x="42.0" y="157.5" class="ink2" font-size="11" text-anchor="end" font-weight="400">750</text>
+<line x1="48" x2="348" y1="96.0" y2="96.0" class="grid" stroke-width="1"/>
+<text x="42.0" y="100.0" class="ink2" font-size="11" text-anchor="end" font-weight="400">1000</text>
+<path d="M58.0,326.0 V314.5 q0,-3 3,-3 H79.7 q3,0 3,3 V326.0 Z" class="glassbox"><title>Glassbox F32: 63.2 tok/s</title></path>
+<text x="70.3" y="306.5" class="ink" font-size="11" text-anchor="middle" font-weight="400">63</text>
+<path d="M84.7,326.0 V310.2 q0,-3 3,-3 H106.3 q3,0 3,3 V326.0 Z" class="llamacpp"><title>llama.cpp F32: 81.8 tok/s</title></path>
+<text x="97.0" y="302.2" class="ink" font-size="11" text-anchor="middle" font-weight="400">82</text>
+<path d="M111.3,326.0 V320.5 q0,-3 3,-3 H133.0 q3,0 3,3 V326.0 Z" class="transformers"><title>transformers F32: 37.0 tok/s</title></path>
+<text x="123.7" y="312.5" class="ink" font-size="11" text-anchor="middle" font-weight="400">37</text>
+<text x="98.0" y="346.0" class="ink2" font-size="12" text-anchor="middle" font-weight="400">F32</text>
+<path d="M168.0,326.0 V286.1 q0,-3 3,-3 H193.0 q3,0 3,3 V326.0 Z" class="glassbox"><title>Glassbox Q8_0: 186.6 tok/s</title></path>
+<text x="182.0" y="278.1" class="ink" font-size="11" text-anchor="middle" font-weight="400">187</text>
+<path d="M198.0,326.0 V266.5 q0,-3 3,-3 H223.0 q3,0 3,3 V326.0 Z" class="llamacpp"><title>llama.cpp Q8_0: 271.5 tok/s</title></path>
+<text x="212.0" y="258.5" class="ink" font-size="11" text-anchor="middle" font-weight="400">272</text>
+<text x="198.0" y="346.0" class="ink2" font-size="12" text-anchor="middle" font-weight="400">Q8_0</text>
+<path d="M268.0,326.0 V284.1 q0,-3 3,-3 H293.0 q3,0 3,3 V326.0 Z" class="glassbox"><title>Glassbox Q4_0: 195.2 tok/s</title></path>
+<text x="282.0" y="276.1" class="ink" font-size="11" text-anchor="middle" font-weight="400">195</text>
+<path d="M298.0,326.0 V255.9 q0,-3 3,-3 H323.0 q3,0 3,3 V326.0 Z" class="llamacpp"><title>llama.cpp Q4_0: 318.0 tok/s</title></path>
+<text x="312.0" y="247.9" class="ink" font-size="11" text-anchor="middle" font-weight="400">318</text>
+<text x="298.0" y="346.0" class="ink2" font-size="12" text-anchor="middle" font-weight="400">Q4_0</text>
+<text x="198.0" y="370.0" class="ink" font-size="13" text-anchor="middle" font-weight="700">SMolLM2-135M (stand-in)</text>
+<line x1="372" x2="672" y1="326.0" y2="326.0" class="grid" stroke-width="1"/>
+<text x="366.0" y="330.0" class="ink2" font-size="11" text-anchor="end" font-weight="400">0</text>
+<line x1="372" x2="672" y1="268.5" y2="268.5" class="grid" stroke-width="1"/>
+<text x="366.0" y="272.5" class="ink2" font-size="11" text-anchor="end" font-weight="400">250</text>
+<line x1="372" x2="672" y1="211.0" y2="211.0" class="grid" stroke-width="1"/>
+<text x="366.0" y="215.0" class="ink2" font-size="11" text-anchor="end" font-weight="400">500</text>
+<line x1="372" x2="672" y1="153.5" y2="153.5" class="grid" stroke-width="1"/>
+<text x="366.0" y="157.5" class="ink2" font-size="11" text-anchor="end" font-weight="400">750</text>
+<line x1="372" x2="672" y1="96.0" y2="96.0" class="grid" stroke-width="1"/>
+<text x="366.0" y="100.0" class="ink2" font-size="11" text-anchor="end" font-weight="400">1000</text>
+<path d="M382.0,326.0 V323.9 q0,-3 3,-3 H403.7 q3,0 3,3 V326.0 Z" class="glassbox"><title>Glassbox F32: 22.2 tok/s</title></path>
+<text x="394.3" y="315.9" class="ink" font-size="11" text-anchor="middle" font-weight="400">22</text>
+<path d="M408.7,326.0 V322.5 q0,-3 3,-3 H430.3 q3,0 3,3 V326.0 Z" class="llamacpp"><title>llama.cpp F32: 28.5 tok/s</title></path>
+<text x="421.0" y="314.5" class="ink" font-size="11" text-anchor="middle" font-weight="400">28</text>
+<path d="M435.3,326.0 V324.7 q0,-3 3,-3 H457.0 q3,0 3,3 V326.0 Z" class="transformers"><title>transformers F32: 18.8 tok/s</title></path>
+<text x="447.7" y="316.7" class="ink" font-size="11" text-anchor="middle" font-weight="400">19</text>
+<text x="422.0" y="346.0" class="ink2" font-size="12" text-anchor="middle" font-weight="400">F32</text>
+<path d="M492.0,326.0 V317.8 q0,-3 3,-3 H517.0 q3,0 3,3 V326.0 Z" class="glassbox"><title>Glassbox Q8_0: 48.7 tok/s</title></path>
+<text x="506.0" y="309.8" class="ink" font-size="11" text-anchor="middle" font-weight="400">49</text>
+<path d="M522.0,326.0 V308.8 q0,-3 3,-3 H547.0 q3,0 3,3 V326.0 Z" class="llamacpp"><title>llama.cpp Q8_0: 87.7 tok/s</title></path>
+<text x="536.0" y="300.8" class="ink" font-size="11" text-anchor="middle" font-weight="400">88</text>
+<text x="522.0" y="346.0" class="ink2" font-size="12" text-anchor="middle" font-weight="400">Q8_0</text>
+<path d="M592.0,326.0 V313.1 q0,-3 3,-3 H617.0 q3,0 3,3 V326.0 Z" class="glassbox"><title>Glassbox Q4_0: 69.0 tok/s</title></path>
+<text x="606.0" y="305.1" class="ink" font-size="11" text-anchor="middle" font-weight="400">69</text>
+<path d="M622.0,326.0 V289.3 q0,-3 3,-3 H647.0 q3,0 3,3 V326.0 Z" class="llamacpp"><title>llama.cpp Q4_0: 172.4 tok/s</title></path>
+<text x="636.0" y="281.3" class="ink" font-size="11" text-anchor="middle" font-weight="400">172</text>
+<text x="622.0" y="346.0" class="ink2" font-size="12" text-anchor="middle" font-weight="400">Q4_0</text>
+<text x="522.0" y="370.0" class="ink" font-size="13" text-anchor="middle" font-weight="700">SMolLM2-360M (stand-in)</text>
+<line x1="696" x2="996" y1="326.0" y2="326.0" class="grid" stroke-width="1"/>
+<text x="690.0" y="330.0" class="ink2" font-size="11" text-anchor="end" font-weight="400">0</text>
+<line x1="696" x2="996" y1="268.5" y2="268.5" class="grid" stroke-width="1"/>
+<text x="690.0" y="272.5" class="ink2" font-size="11" text-anchor="end" font-weight="400">25</text>
+<line x1="696" x2="996" y1="211.0" y2="211.0" class="grid" stroke-width="1"/>
+<text x="690.0" y="215.0" class="ink2" font-size="11" text-anchor="end" font-weight="400">50</text>
+<line x1="696" x2="996" y1="153.5" y2="153.5" class="grid" stroke-width="1"/>
+<text x="690.0" y="157.5" class="ink2" font-size="11" text-anchor="end" font-weight="400">75</text>
+<line x1="696" x2="996" y1="96.0" y2="96.0" class="grid" stroke-width="1"/>
+<text x="690.0" y="100.0" class="ink2" font-size="11" text-anchor="end" font-weight="400">100</text>
+<path d="M706.0,326.0 V317.5 q0,-3 3,-3 H727.7 q3,0 3,3 V326.0 Z" class="glassbox"><title>Glassbox F32: 5.0 tok/s</title></path>
+<text x="718.3" y="309.5" class="ink" font-size="11" text-anchor="middle" font-weight="400">5</text>
+<path d="M732.7,326.0 V312.8 q0,-3 3,-3 H754.3 q3,0 3,3 V326.0 Z" class="llamacpp"><title>llama.cpp F32: 7.0 tok/s</title></path>
+<text x="745.0" y="304.8" class="ink" font-size="11" text-anchor="middle" font-weight="400">7</text>
+<path d="M759.3,326.0 V316.4 q0,-3 3,-3 H781.0 q3,0 3,3 V326.0 Z" class="transformers"><title>transformers F32: 5.5 tok/s</title></path>
+<text x="771.7" y="308.4" class="ink" font-size="11" text-anchor="middle" font-weight="400">5</text>
+<text x="746.0" y="346.0" class="ink2" font-size="12" text-anchor="middle" font-weight="400">F32</text>
+<path d="M816.0,326.0 V298.7 q0,-3 3,-3 H841.0 q3,0 3,3 V326.0 Z" class="glassbox"><title>Glassbox Q8_0: 13.2 tok/s</title></path>
+<text x="830.0" y="290.7" class="ink" font-size="11" text-anchor="middle" font-weight="400">13</text>
+<path d="M846.0,326.0 V274.1 q0,-3 3,-3 H871.0 q3,0 3,3 V326.0 Z" class="llamacpp"><title>llama.cpp Q8_0: 23.9 tok/s</title></path>
+<text x="860.0" y="266.1" class="ink" font-size="11" text-anchor="middle" font-weight="400">24</text>
+<text x="846.0" y="346.0" class="ink2" font-size="12" text-anchor="middle" font-weight="400">Q8_0</text>
+<path d="M916.0,326.0 V290.5 q0,-3 3,-3 H941.0 q3,0 3,3 V326.0 Z" class="glassbox"><title>Glassbox Q4_0: 16.7 tok/s</title></path>
+<text x="930.0" y="282.5" class="ink" font-size="11" text-anchor="middle" font-weight="400">17</text>
+<path d="M946.0,326.0 V251.7 q0,-3 3,-3 H971.0 q3,0 3,3 V326.0 Z" class="llamacpp"><title>llama.cpp Q4_0: 33.6 tok/s</title></path>
+<text x="960.0" y="243.7" class="ink" font-size="11" text-anchor="middle" font-weight="400">34</text>
+<text x="946.0" y="346.0" class="ink2" font-size="12" text-anchor="middle" font-weight="400">Q4_0</text>
+<text x="846.0" y="370.0" class="ink" font-size="13" text-anchor="middle" font-weight="700">SMolLM2-1.7B (stand-in)</text>
+</svg>

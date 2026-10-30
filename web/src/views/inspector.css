@@ -1,0 +1,113 @@
+.lens,
+.attn {
+  margin: 0;
+  display: grid;
+  gap: 14px;
+}
+.lens figcaption,
+.attn figcaption {
+  max-width: 60ch;
+}
+.lens__rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+.lens__row {
+  display: grid;
+  grid-template-columns: 2.2em minmax(6em, max-content) 4em 1fr;
+  align-items: center;
+  gap: 10px;
+  min-height: 26px;
+  font-size: var(--step--1);
+}
+.lens__layer {
+  text-align: right;
+  color: var(--ink-2);
+  font-variation-settings: 'wdth' 75;
+}
+/* Each layer's guess is a frame at its own density. */
+.lens__tok {
+  padding: 2px 8px;
+  border-radius: 3px;
+  white-space: pre;
+  background: color-mix(in srgb, var(--film), rgb(var(--film-dense)) calc((1 - var(--p)) * 88%));
+  color: #fbeadb;
+  font-weight: 600;
+}
+.lens__row--hit .lens__tok {
+  box-shadow: 0 0 0 2px var(--mark);
+}
+.lens__row--decided .lens__layer {
+  color: var(--mark);
+  font-weight: 800;
+}
+.lens__p {
+  font-weight: 600;
+}
+.lens__rest {
+  display: flex;
+  gap: 14px;
+  color: var(--ink-2);
+  white-space: pre;
+  overflow: hidden;
+}
+
+.attn__layer {
+  display: grid;
+  grid-template-columns: 6em 1fr;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+}
+.attn__layer input {
+  accent-color: var(--mark);
+  min-height: 44px;
+}
+.attn__heads {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 6px;
+}
+.attn__head {
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+  border: 0;
+  background: var(--sunk);
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+}
+.attn__head--on {
+  box-shadow: inset 0 0 0 2px var(--mark);
+}
+.attn__thumb {
+  display: flex;
+  height: 22px;
+  gap: 1px;
+}
+.attn__thumb i {
+  flex: 1;
+  background: var(--film);
+  opacity: calc(0.08 + var(--a) * 0.92);
+}
+.attn__text {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  line-height: 1.2;
+}
+.attn__tok {
+  padding: 4px 3px;
+  white-space: pre;
+  background: color-mix(in srgb, var(--film) calc(var(--a) * 100%), transparent);
+  color: var(--ink);
+  border-radius: 2px;
+}
+.attn__tok--q {
+  box-shadow: inset 0 -3px 0 var(--mark);
+  font-weight: 700;
+}
