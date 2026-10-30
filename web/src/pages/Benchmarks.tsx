@@ -101,7 +101,8 @@ function SingleChart({ metric, title }: { metric: 0 | 1; title: string }) {
           <thead>
             <tr>
               <th>Model</th>
-              <th>Type</th>
+              <th>Model</th>
+            <th>Type</th>
               {ENGINES.map((e) => (
                 <th key={e.key} className="num">
                   {e.name}
@@ -274,10 +275,9 @@ function Serving() {
 
 /** One small chart per drafter/target pair: speedup against draft length, with 1x marked. */
 function Spec() {
-  const random = byName('/speculative.json')
-  const trained = byName('/speculative-trained.json')
-  if (!random && !trained) return null
-  const runs: Json[] = [...(random?.runs ?? []), ...(trained?.runs ?? [])]
+  const spec = byName('/speculative.json')
+  if (!spec) return null
+  const runs: Json[] = spec.runs
   const pairs = [...new Set(runs.map((r) => r.pair))] as string[]
   const ymax = Math.max(2, ...runs.map((r) => r.speedup))
   const W = 260
@@ -294,9 +294,7 @@ function Spec() {
           <h3>Speculative decoding: speedup by draft length</h3>
           <p>
             Decode time against the target alone (greedy, identical output). Above the dashed line it helps; below, the
-            drafting costs more than it saves. On stand-in weights draft models rarely agree with their targets, and the
-            trained stand-in is too small for a drafter to be much cheaper. Prompt lookup wins where the output copies the
-            input.
+            drafting costs more than it saves. Prompt lookup wins where the output copies the input.
           </p>
         </figcaption>
         <div className="spec-multiples">
@@ -305,7 +303,7 @@ function Spec() {
             const best = pts.reduce((a, b) => (b.speedup > a.speedup ? b : a))
             return (
               <div key={p}>
-                <h4>{nice(p)}{runs.indexOf(pts[0]) >= (random?.runs.length ?? 0) ? ' (trained stand-in)' : ''}</h4>
+                <h4>{nice(p)}</h4>
                 <svg viewBox={`0 0 ${W} ${H + 24}`} role="img" aria-label={`${nice(p)}: best ${best.speedup.toFixed(2)} times at k=${best.k}`}>
                   <line x1={L} x2={W - 8} y1={py(1)} y2={py(1)} className="ref" />
                   <text x={L - 6} y={py(1) + 4} className="tick" textAnchor="end">1×</text>
@@ -361,22 +359,24 @@ function Spec() {
 }
 
 function Quality() {
-  const q = byName('quality-135m-standin.json')
-  const l = byName('quality-135m-standin-llamacpp.json')
-  if (!q) return null
+  const models = ['135m', '360m']
+    .map((m) => ({ m, q: byName(`quality-${m}.json`), l: byName(`quality-${m}-llamacpp.json`) }))
+    .filter((x): x is { m: string; q: Json; l: Json | undefined } => !!x.q)
+  if (!models.length) return null
   return (
     <figure className="chart">
       <figcaption>
         <h3>Quantization against llama.cpp</h3>
         <p>
-          Perplexity on {q.scored_tokens.toLocaleString()} scored tokens, the same GGUF files in both engines. With stand-in
-          random weights the value sits near the vocabulary size; what matters is that the engines agree.
+          Perplexity of the SmolLM2 Instruct checkpoints on {models[0].q.scored_tokens.toLocaleString()} scored tokens of
+          English prose, the same GGUF files in both engines. Lower is better; the two engines should agree.
         </p>
       </figcaption>
       <div className="table-scroll">
         <table>
         <thead>
           <tr>
+            <th>Model</th>
             <th>Type</th>
             <th className="num">Glassbox</th>
             <th className="num">llama.cpp</th>
@@ -384,14 +384,17 @@ function Quality() {
           </tr>
         </thead>
         <tbody>
-          {q.results.map((r: Json) => (
-            <tr key={r.dtype}>
+          {models.flatMap(({ m, q, l }) =>
+            q.results.map((r: Json) => (
+            <tr key={m + r.dtype}>
+              <td>{m.toUpperCase()}</td>
               <td>{r.dtype.toUpperCase()}</td>
-              <td className="num">{r.ppl.toFixed(2)}</td>
-              <td className="num">{l?.[r.dtype]?.toFixed(2) ?? '–'}</td>
+              <td className="num">{r.ppl.toFixed(3)}</td>
+              <td className="num">{l?.[r.dtype]?.toFixed(3) ?? '–'}</td>
               <td className="num">{(r.top1_agreement_vs_f32 * 100).toFixed(1)}%</td>
             </tr>
-          ))}
+            )),
+          )}
         </tbody>
       </table>
         </div>
@@ -412,9 +415,9 @@ export function Benchmarks() {
           <code>0c1e570</code>) reads the same GGUF bytes.
         </p>
         <p className="bench__warn">
-          The model weights are stand-ins with SmolLM2’s exact shapes and random values, because Hugging Face was blocked
-          from the build machine. Speed depends only on the shapes, so speed numbers stand; anything that depends on what
-          the model knows (perplexity, speculative acceptance) will change with real weights.
+          The speed charts were measured on models with SmolLM2’s exact shapes and random values, while Hugging Face was
+          out of reach from the build machine; speed depends only on the shapes. Perplexity and speculative decoding use
+          the real SmolLM2 checkpoints.
         </p>
       </header>
       <section aria-labelledby="b-single">
@@ -422,7 +425,7 @@ export function Benchmarks() {
         <SingleChart metric={1} title="Writing: decode tokens per second (tg128)" />
         <SingleChart metric={0} title="Reading: prompt tokens per second (pp512)" />
         <p className="bench__read">
-          Decode, where memory bandwidth rules, runs at 50 to 80 percent of llama.cpp. Prompt processing is three to seven
+          Decode, where memory bandwidth rules, runs at 50 to 80 percent of llama.cpp. Prompt processing is five to eight
           times slower: llama.cpp uses AVX-512 VNNI and weight layouts repacked for its matrix kernels, Glassbox uses AVX2
           dot products.
         </p>

@@ -2,30 +2,30 @@
   "chunks": 100,
   "ctx": 512,
   "meta": {
-    "commit": "ee9e6d7",
+    "commit": "b336228",
     "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
-    "date": "2026-10-30T14:14:36Z",
+    "date": "2026-10-30T20:42:56Z",
     "logical_cpus": 4,
     "simd": true
   },
-  "model": "models/standin-135M",
+  "model": "models/SmolLM2-135M-Instruct",
   "results": [
     {
       "dtype": "f32",
-      "ppl": 54636.987364381,
+      "ppl": 7.768546575286351,
       "top1_agreement_vs_f32": 1.0,
       "weight_mb": 537.919488
     },
     {
       "dtype": "q8_0",
-      "ppl": 54689.436679289836,
-      "top1_agreement_vs_f32": 0.9238039215686275,
+      "ppl": 7.792590289257212,
+      "top1_agreement_vs_f32": 0.9718039215686275,
       "weight_mb": 142.884864
     },
     {
       "dtype": "q4_0",
-      "ppl": 54163.45988029562,
-      "top1_agreement_vs_f32": 0.28690196078431374,
+      "ppl": 9.797219788342773,
+      "top1_agreement_vs_f32": 0.780156862745098,
       "weight_mb": 75.644928
     }
   ],
