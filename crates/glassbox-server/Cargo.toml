@@ -1,0 +1,12 @@
+[package]
+name = "glassbox-server"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[[bin]]
+name = "glassbox"
+path = "src/main.rs"
+
+[dependencies]
+glassbox-core = { path = "../glassbox-core" }

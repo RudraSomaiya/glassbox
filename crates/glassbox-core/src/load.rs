@@ -30,7 +30,7 @@ fn to_f32(dtype: Dtype, data: &[u8]) -> Result<Vec<f32>, Error> {
 impl Model {
     /// Build a model from a `config.json` string and safetensors bytes.
     pub fn from_safetensors(config: &str, bytes: &[u8]) -> Result<Model, Error> {
-        let config: Config = serde_json::from_str(config)?;
+        let config = Config::from_json(config)?;
         let st = SafeTensors::deserialize(bytes)?;
         let get = |name: &str| -> Result<(Vec<usize>, Vec<f32>), Error> {
             let t = st.tensor(name).map_err(|e| format!("{name}: {e}"))?;

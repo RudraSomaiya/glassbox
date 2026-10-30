@@ -35,6 +35,17 @@ fn default_max_pos() -> usize {
 }
 
 impl Config {
+    /// Parse `config.json`. Newer transformers nest `rope_theta` under `rope_parameters`.
+    pub fn from_json(text: &str) -> serde_json::Result<Config> {
+        let mut v: serde_json::Value = serde_json::from_str(text)?;
+        if v.get("rope_theta").is_none() {
+            if let Some(t) = v.pointer("/rope_parameters/rope_theta").cloned() {
+                v["rope_theta"] = t;
+            }
+        }
+        serde_json::from_value(v)
+    }
+
     pub fn head_dim(&self) -> usize {
         self.head_dim.unwrap_or(self.hidden_size / self.num_attention_heads)
     }
