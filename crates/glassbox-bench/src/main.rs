@@ -10,6 +10,8 @@ const USAGE: &str = "usage:
   glassbox-bench single      --model DIR [--gguf FILE] [--dtype f32|q8_0|q4_0] [--threads N] [--label L] [--out FILE]
   glassbox-bench progression --model DIR [--out FILE]
   glassbox-bench quality     --model DIR --file TEXT [--ctx 512] [--chunks 100] [--out FILE]
+  glassbox-bench serve       --model DIR [--dtype q8_0] [--out FILE]
+  glassbox-bench spec        [--out FILE]   (needs models/standin-{135M,360M,1.7B} GGUFs)
   glassbox-bench kernels";
 
 fn arg<'a>(args: &'a [String], name: &str) -> Option<&'a str> {
@@ -214,6 +216,182 @@ fn quality(args: &[String]) {
     );
 }
 
+/// Exponential inter-arrival times (a Poisson process) from a seeded RNG.
+fn arrivals(rate: f64, n: usize, rng: &mut glassbox_core::sampler::Rng) -> Vec<f64> {
+    let mut t = 0.0;
+    (0..n)
+        .map(|_| {
+            t += -(1.0 - rng.next_f32() as f64).ln() / rate;
+            t
+        })
+        .collect()
+}
+
+struct Load {
+    prompts: Vec<Vec<u32>>,
+    outputs: Vec<usize>,
+}
+
+/// Run one workload through the scheduler in real time and summarise it.
+fn serve_run(model: &Model, config: glassbox_server::scheduler::Config, load: &Load, rate: f64) -> Value {
+    use glassbox_server::scheduler::{Event, Request, Scheduler};
+    let mut rng = glassbox_core::sampler::Rng::new(42);
+    let times = arrivals(rate, load.prompts.len(), &mut rng);
+    let mut s = Scheduler::new(model, config.clone());
+    let mut sinks = Vec::new();
+    let t0 = Instant::now();
+    let mut next = 0;
+    while next < times.len() || !s.is_idle() {
+        let now = t0.elapsed().as_secs_f64();
+        while next < times.len() && times[next] <= now {
+            let (sink, rx) = tokio::sync::mpsc::unbounded_channel::<Event>();
+            let req = Request {
+                prompt: load.prompts[next].clone(),
+                max_tokens: load.outputs[next],
+                sampler: glassbox_core::SamplerConfig::default(),
+                stop: vec![],
+                sink,
+                constraint: None,
+            };
+            s.submit_at(req, t0 + std::time::Duration::from_secs_f64(times[next]));
+            sinks.push(rx);
+            next += 1;
+        }
+        if s.is_idle() {
+            std::thread::sleep(std::time::Duration::from_secs_f64((times[next] - now).max(0.0)));
+            continue;
+        }
+        s.step();
+    }
+    let wall = t0.elapsed().as_secs_f64();
+    let m = &s.metrics;
+    let q = |v: &[f64], p: f64| {
+        let mut v = v.to_vec();
+        v.sort_by(|a, b| a.total_cmp(b));
+        v.get(((v.len().max(1) - 1) as f64 * p).round() as usize).copied().unwrap_or(0.0)
+    };
+    json!({
+        "rate_rps": rate, "requests": load.prompts.len(), "wall_s": wall,
+        "throughput_tok_s": m.generated_tokens as f64 / wall,
+        "ttft_p50_s": q(&m.ttft, 0.5), "ttft_p99_s": q(&m.ttft, 0.99),
+        "itl_p50_s": q(&m.itl, 0.5), "itl_p99_s": q(&m.itl, 0.99),
+        "prefix_hit_tokens": m.prefix_hit_tokens, "prompt_tokens": m.prompt_tokens,
+        "preemptions": m.preemptions, "mean_batch_tokens": m.batch_tokens as f64 / m.steps.max(1) as f64,
+    })
+}
+
+fn serve(args: &[String]) {
+    use glassbox_server::scheduler::Config;
+    let dir = arg(args, "--model").expect(USAGE);
+    let model = load(dir, None, Some(arg(args, "--dtype").unwrap_or("q8_0")));
+    let vocab = model.config.vocab_size as f32;
+    let mut rng = glassbox_core::sampler::Rng::new(7);
+    let mut rand_tokens = |n: usize| (0..n).map(|_| (rng.next_f32() * vocab) as u32).collect::<Vec<u32>>();
+    let n = 48;
+    // Chat-like lengths: prompts 64-448 tokens, replies 16-128.
+    let mut lens = glassbox_core::sampler::Rng::new(9);
+    let mixed = Load {
+        prompts: (0..n).map(|_| rand_tokens(64 + (lens.next_f32() * 384.0) as usize)).collect(),
+        outputs: (0..n).map(|_| 16 + (lens.next_f32() * 112.0) as usize).collect(),
+    };
+    // Every request starts with the same 384-token system prompt.
+    let system = rand_tokens(384);
+    let shared = Load {
+        prompts: (0..n)
+            .map(|_| {
+                let mut p = system.clone();
+                p.extend(rand_tokens(16 + (lens.next_f32() * 48.0) as usize));
+                p
+            })
+            .collect(),
+        outputs: (0..n).map(|_| 16 + (lens.next_f32() * 48.0) as usize).collect(),
+    };
+    let batched = Config { token_budget: 512, max_seqs: 32, num_blocks: 4096, prefix_caching: false };
+    let single = Config { max_seqs: 1, ..batched.clone() };
+    let mut runs = Vec::new();
+    for rate in [0.5, 1.0, 2.0, 4.0, 8.0] {
+        for (name, cfg) in [("continuous batching", &batched), ("one at a time", &single)] {
+            let r = serve_run(&model, cfg.clone(), &mixed, rate);
+            eprintln!("{name:20} {rate:4} req/s: {:.0} tok/s, TTFT p50 {:.2}s p99 {:.2}s",
+                r["throughput_tok_s"].as_f64().unwrap(), r["ttft_p50_s"].as_f64().unwrap(), r["ttft_p99_s"].as_f64().unwrap());
+            runs.push(json!({"workload": "mixed", "mode": name, "result": r}));
+        }
+    }
+    for rate in [2.0, 8.0] {
+        for (name, on) in [("prefix cache", true), ("no prefix cache", false)] {
+            let r = serve_run(&model, Config { prefix_caching: on, ..batched.clone() }, &shared, rate);
+            eprintln!("{name:20} {rate:4} req/s: {:.0} tok/s, TTFT p50 {:.2}s p99 {:.2}s, {} prompt tokens reused",
+                r["throughput_tok_s"].as_f64().unwrap(), r["ttft_p50_s"].as_f64().unwrap(), r["ttft_p99_s"].as_f64().unwrap(),
+                r["prefix_hit_tokens"]);
+            runs.push(json!({"workload": "shared system prompt", "mode": name, "result": r}));
+        }
+    }
+    write(arg(args, "--out"), &json!({"model": dir, "dtype": format!("{:?}", model.layers[0].wqkv.dtype()),
+        "threads": pool::threads(), "workloads": {
+            "mixed": "48 requests, prompts 64-448 random tokens, replies 16-128 tokens, greedy, Poisson arrivals",
+            "shared system prompt": "48 requests, one 384-token system prompt + 16-64 token user part, replies 16-64 tokens"},
+        "runs": runs, "meta": meta()}));
+}
+
+/// Speculative decoding: speedup and acceptance against draft length.
+fn spec(args: &[String]) {
+    use glassbox_core::spec::{generate, Drafter};
+    let gguf = |m: &str, q: &str| Model::load_gguf(format!("models/{m}/model-{q}.gguf")).expect("gguf");
+    let tok = glassbox_core::Tokenizer::from_file("models/standin-135M/tokenizer.json").unwrap();
+    let text = std::fs::read_to_string("data/perplexity.txt").unwrap_or_default();
+    let chat = |u: &str| tok.encode(&glassbox_core::Tokenizer::chat_prompt(&[("user", u)]));
+    let questions = ["Explain how a bicycle stays upright.", "Write a short story about a lighthouse keeper.",
+                     "What are the trade-offs between arrays and linked lists?", "Describe the water cycle."];
+    let qa: Vec<Vec<u32>> = questions.iter().map(|q| chat(q)).collect();
+    // Summarisation: a passage plus an instruction, where the answer can copy from the prompt.
+    let docs: Vec<Vec<u32>> = text
+        .split("\n\n")
+        .filter(|p| p.len() > 1200)
+        .take(4)
+        .map(|p| chat(&format!("{}\n\nSummarise the text above in a few sentences.", &p[..p.len().min(1600)])))
+        .collect();
+    let max = 64;
+    let mut out = Vec::new();
+    let small = gguf("standin-135M", "q8_0");
+    let mid = gguf("standin-360M", "q8_0");
+    let big = gguf("standin-1.7B", "q8_0");
+    let big4 = gguf("standin-1.7B", "q4_0");
+    let cases: Vec<(&str, &Model, Drafter, &Vec<Vec<u32>>)> = vec![
+        ("135M -> 360M", &mid, Drafter::Model(&small), &qa),
+        ("135M -> 1.7B", &big, Drafter::Model(&small), &qa),
+        ("1.7B Q4_0 -> 1.7B Q8_0", &big, Drafter::Model(&big4), &qa),
+        ("prompt lookup -> 360M (summaries)", &mid, Drafter::Lookup { ngram: 3 }, &docs),
+    ];
+    for (name, target, drafter, prompts) in cases {
+        let t = Instant::now();
+        let mut n = 0;
+        for p in prompts.iter() {
+            n += glassbox_core::greedy(target, p, max).len();
+        }
+        let base = n as f64 / t.elapsed().as_secs_f64();
+        for k in [1, 2, 4, 6, 8] {
+            let t = Instant::now();
+            let (mut n, mut drafted, mut accepted, mut passes) = (0, 0, 0, 0);
+            for p in prompts.iter() {
+                let (o, st) = generate(target, &drafter, p, max, k, glassbox_core::SamplerConfig::default(), None);
+                n += o.len();
+                drafted += st.drafted;
+                accepted += st.accepted;
+                passes += st.target_passes;
+            }
+            let tps = n as f64 / t.elapsed().as_secs_f64();
+            let acc = accepted as f64 / drafted.max(1) as f64;
+            eprintln!("{name:34} k={k}: {tps:6.1} tok/s vs {base:6.1} alone ({:.2}x), acceptance {:.0}%", tps / base, acc * 100.0);
+            out.push(json!({"pair": name, "k": k, "tok_s": tps, "baseline_tok_s": base, "speedup": tps / base,
+                            "acceptance": acc, "drafted": drafted, "accepted": accepted, "target_passes": passes,
+                            "tokens": n}));
+        }
+    }
+    write(arg(args, "--out"), &json!({"max_tokens": max, "decoding": "greedy", "runs": out, "threads": pool::threads(),
+        "note": "stand-in random weights: acceptance between different random models is near zero by construction; the Q4_0 -> Q8_0 pair is the same model at two precisions",
+        "meta": meta()}));
+}
+
 fn kernels() {
     for (rows, cols) in [(576, 576), (1536, 576), (576, 1536), (49152, 576)] {
         let w: Vec<f32> = (0..rows * cols)
@@ -249,6 +427,8 @@ fn main() {
         Some("single") => single(&args),
         Some("progression") => progression(&args),
         Some("quality") => quality(&args),
+        Some("serve") => serve(&args),
+        Some("spec") => spec(&args),
         Some("kernels") => kernels(),
         _ => eprintln!("{USAGE}"),
     }

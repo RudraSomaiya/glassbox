@@ -152,6 +152,12 @@ impl<'m> Scheduler<'m> {
     }
 
     pub fn submit(&mut self, req: Request) -> usize {
+        self.submit_at(req, Instant::now())
+    }
+
+    /// Submit with an explicit arrival time (the serving benchmark's
+    /// scheduled arrival, so TTFT includes any wait for the current step).
+    pub fn submit_at(&mut self, req: Request, arrival: Instant) -> usize {
         let id = self.next_id;
         self.next_id += 1;
         self.metrics.prompt_tokens += req.prompt.len() as u64;
@@ -164,7 +170,7 @@ impl<'m> Scheduler<'m> {
             req,
             computed: 0,
             sampler,
-            arrival: Instant::now(),
+            arrival,
             first_token: None,
             last_token: None,
         });
