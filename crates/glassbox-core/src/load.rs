@@ -46,13 +46,17 @@ impl Model {
                 let p = format!("model.layers.{i}");
                 Ok(Layer {
                     attn_norm: vec(&format!("{p}.input_layernorm.weight"))?,
-                    wq: mat(&format!("{p}.self_attn.q_proj.weight"))?,
-                    wk: mat(&format!("{p}.self_attn.k_proj.weight"))?,
-                    wv: mat(&format!("{p}.self_attn.v_proj.weight"))?,
+                    wqkv: Matrix::concat(&[
+                        mat(&format!("{p}.self_attn.q_proj.weight"))?,
+                        mat(&format!("{p}.self_attn.k_proj.weight"))?,
+                        mat(&format!("{p}.self_attn.v_proj.weight"))?,
+                    ]),
                     wo: mat(&format!("{p}.self_attn.o_proj.weight"))?,
                     mlp_norm: vec(&format!("{p}.post_attention_layernorm.weight"))?,
-                    w_gate: mat(&format!("{p}.mlp.gate_proj.weight"))?,
-                    w_up: mat(&format!("{p}.mlp.up_proj.weight"))?,
+                    w_gate_up: Matrix::concat(&[
+                        mat(&format!("{p}.mlp.gate_proj.weight"))?,
+                        mat(&format!("{p}.mlp.up_proj.weight"))?,
+                    ]),
                     w_down: mat(&format!("{p}.mlp.down_proj.weight"))?,
                 })
             })
@@ -120,13 +124,10 @@ impl Model {
                 let v = |n: &str| g.vector(&format!("blk.{i}.{n}.weight"));
                 Ok(Layer {
                     attn_norm: v("attn_norm")?,
-                    wq: m("attn_q")?,
-                    wk: m("attn_k")?,
-                    wv: m("attn_v")?,
+                    wqkv: Matrix::concat(&[m("attn_q")?, m("attn_k")?, m("attn_v")?]),
                     wo: m("attn_output")?,
                     mlp_norm: v("ffn_norm")?,
-                    w_gate: m("ffn_gate")?,
-                    w_up: m("ffn_up")?,
+                    w_gate_up: Matrix::concat(&[m("ffn_gate")?, m("ffn_up")?]),
                     w_down: m("ffn_down")?,
                 })
             })

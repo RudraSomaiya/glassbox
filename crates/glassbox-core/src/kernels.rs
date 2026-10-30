@@ -21,11 +21,17 @@ pub fn simd_enabled() -> bool {
 
 pub fn simd_available() -> bool {
     #[cfg(target_arch = "x86_64")]
-    return is_x86_feature_detected!("avx2") && is_x86_feature_detected!("fma");
+    return is_x86_feature_detected!("avx2") && is_x86_feature_detected!("fma") && is_x86_feature_detected!("f16c");
     #[cfg(all(target_arch = "wasm32", target_feature = "simd128"))]
     return true;
     #[allow(unreachable_code)]
     false
+}
+
+#[allow(dead_code)]
+fn f16_table() -> &'static [f32] {
+    static T: std::sync::OnceLock<Vec<f32>> = std::sync::OnceLock::new();
+    T.get_or_init(|| (0..=u16::MAX).map(d).collect())
 }
 
 // ---------- scalar reference ----------
@@ -61,11 +67,15 @@ pub fn dot_q4_scalar(a: &[BlockQ4_0], b: &[BlockQ8_0]) -> f32 {
 // ---------- AVX2 + FMA ----------
 
 #[cfg(target_arch = "x86_64")]
+#[allow(clippy::needless_range_loop)] // index loops over R x N tiles read clearest here
 mod avx2 {
+    //! Each kernel takes one weight row and `N` activation rows, so a weight
+    //! block is loaded (and for Q4_0, unpacked) once and used `N` times. That
+    //! is what makes prefill compute-bound instead of load-bound.
     use super::*;
     use std::arch::x86_64::*;
 
-    #[target_feature(enable = "avx2,fma")]
+    #[target_feature(enable = "avx2,fma,f16c")]
     unsafe fn hsum(v: __m256) -> f32 {
         let s = _mm_add_ps(_mm256_castps256_ps128(v), _mm256_extractf128_ps(v, 1));
         let s = _mm_add_ps(s, _mm_movehl_ps(s, s));
@@ -73,37 +83,50 @@ mod avx2 {
         _mm_cvtss_f32(s)
     }
 
-    /// # Safety
-    /// The CPU must support AVX2 and FMA.
-    #[target_feature(enable = "avx2,fma")]
-    pub unsafe fn dot_f32(a: &[f32], b: &[f32]) -> f32 {
-        let n = a.len().min(b.len());
-        let (pa, pb) = (a.as_ptr(), b.as_ptr());
-        let mut acc = [_mm256_setzero_ps(); 4];
-        let mut i = 0;
-        while i + 32 <= n {
-            for (k, acc) in acc.iter_mut().enumerate() {
-                let off = i + 8 * k;
-                *acc = _mm256_fmadd_ps(_mm256_loadu_ps(pa.add(off)), _mm256_loadu_ps(pb.add(off)), *acc);
-            }
-            i += 32;
-        }
-        while i + 8 <= n {
-            acc[0] = _mm256_fmadd_ps(_mm256_loadu_ps(pa.add(i)), _mm256_loadu_ps(pb.add(i)), acc[0]);
-            i += 8;
-        }
-        let v = _mm256_add_ps(_mm256_add_ps(acc[0], acc[1]), _mm256_add_ps(acc[2], acc[3]));
-        let mut s = hsum(v);
-        while i < n {
-            s += a[i] * b[i];
-            i += 1;
-        }
-        s
+    /// f16 -> f32 through a 64K-entry table, as ggml does. The obvious
+    /// `_mm_cvtph_ps` on one value compiles to a `vpinsrw` into whatever
+    /// register LLVM picks, which was the accumulator: every block's scale
+    /// then waited on the previous block's FMA, making Q8_0 3x slower.
+    #[inline(always)]
+    unsafe fn h2f(lut: &[f32], bits: u16) -> f32 {
+        *lut.get_unchecked(bits as usize)
     }
 
-    /// Signed i8 x i8 products of 32 lanes, summed to 8 i32 lanes. `maddubs`
+    /// `R` weight rows against `N` activation rows: `out[i][k] = dot(w[i], x[k])`.
+    /// The `R * N` accumulators are independent, so FMA latency overlaps, and
+    /// every load feeds several multiplies.
+    ///
+    /// # Safety
+    /// The CPU must support AVX2, FMA and F16C; all rows have the same length.
+    #[target_feature(enable = "avx2,fma,f16c")]
+    pub unsafe fn dot_f32<const R: usize, const N: usize>(w: [&[f32]; R], x: [&[f32]; N]) -> [[f32; N]; R] {
+        let n = w[0].len();
+        let pw = w.map(|r| r.as_ptr());
+        let px = x.map(|r| r.as_ptr());
+        let mut acc = [[_mm256_setzero_ps(); N]; R];
+        let mut j = 0;
+        while j + 8 <= n {
+            let xv: [__m256; N] = std::array::from_fn(|k| _mm256_loadu_ps(px[k].add(j)));
+            for i in 0..R {
+                let wv = _mm256_loadu_ps(pw[i].add(j));
+                for k in 0..N {
+                    acc[i][k] = _mm256_fmadd_ps(wv, xv[k], acc[i][k]);
+                }
+            }
+            j += 8;
+        }
+        let mut out = [[0f32; N]; R];
+        for i in 0..R {
+            for k in 0..N {
+                out[i][k] = hsum(acc[i][k]) + (j..n).map(|t| w[i][t] * x[k][t]).sum::<f32>();
+            }
+        }
+        out
+    }
+
+    /// Signed i8 x i8 products of 32 lanes, summed to 8 f32 lanes. `maddubs`
     /// wants unsigned x signed, so move the sign of `x` onto `y` first.
-    #[target_feature(enable = "avx2,fma")]
+    #[target_feature(enable = "avx2,fma,f16c")]
     unsafe fn mul_sum_i8(x: __m256i, y: __m256i) -> __m256 {
         let ax = _mm256_sign_epi8(x, x);
         let sy = _mm256_sign_epi8(y, x);
@@ -111,37 +134,59 @@ mod avx2 {
         _mm256_cvtepi32_ps(_mm256_madd_epi16(dot, _mm256_set1_epi16(1)))
     }
 
-    /// # Safety
-    /// The CPU must support AVX2 and FMA.
-    #[target_feature(enable = "avx2,fma")]
-    pub unsafe fn dot_q8(a: &[BlockQ8_0], b: &[BlockQ8_0]) -> f32 {
-        let mut acc = _mm256_setzero_ps();
-        for (x, y) in a.iter().zip(b) {
-            let qx = _mm256_loadu_si256(x.qs.as_ptr() as *const __m256i);
-            let qy = _mm256_loadu_si256(y.qs.as_ptr() as *const __m256i);
-            let scale = _mm256_set1_ps(d(x.d) * d(y.d));
-            acc = _mm256_fmadd_ps(scale, mul_sum_i8(qx, qy), acc);
+    /// Shared body of the Q8_0 and Q4_0 kernels: `unpack` turns weight block
+    /// `b` of row `i` into 32 signed bytes and its scale.
+    #[target_feature(enable = "avx2,fma,f16c")]
+    unsafe fn dot_blocks<const R: usize, const N: usize>(
+        blocks: usize,
+        unpack: impl Fn(usize, usize) -> (__m256i, f32),
+        x: [&[BlockQ8_0]; N],
+    ) -> [[f32; N]; R] {
+        let lut = f16_table();
+        let mut acc = [[_mm256_setzero_ps(); N]; R];
+        for b in 0..blocks {
+            let xq: [(__m256i, f32); N] = std::array::from_fn(|k| {
+                let xb = x[k].get_unchecked(b);
+                (_mm256_loadu_si256(xb.qs.as_ptr() as *const __m256i), h2f(lut, xb.d))
+            });
+            for i in 0..R {
+                let (qw, dw) = unpack(i, b);
+                for k in 0..N {
+                    let scale = _mm256_set1_ps(dw * xq[k].1);
+                    acc[i][k] = _mm256_fmadd_ps(scale, mul_sum_i8(qw, xq[k].0), acc[i][k]);
+                }
+            }
         }
-        hsum(acc)
+        acc.map(|r| r.map(|a| hsum(a)))
     }
 
     /// # Safety
-    /// The CPU must support AVX2 and FMA.
-    #[target_feature(enable = "avx2,fma")]
-    pub unsafe fn dot_q4(a: &[BlockQ4_0], b: &[BlockQ8_0]) -> f32 {
-        let mut acc = _mm256_setzero_ps();
+    /// The CPU must support AVX2, FMA and F16C; all rows have the same block count.
+    #[target_feature(enable = "avx2,fma,f16c")]
+    pub unsafe fn dot_q8<const R: usize, const N: usize>(w: [&[BlockQ8_0]; R], x: [&[BlockQ8_0]; N]) -> [[f32; N]; R] {
+        let lut = f16_table();
+        let unpack = |i: usize, b: usize| {
+            let wb = w[i].get_unchecked(b);
+            (_mm256_loadu_si256(wb.qs.as_ptr() as *const __m256i), h2f(lut, wb.d))
+        };
+        dot_blocks::<R, N>(w[0].len(), unpack, x)
+    }
+
+    /// # Safety
+    /// The CPU must support AVX2, FMA and F16C; all rows have the same block count.
+    #[target_feature(enable = "avx2,fma,f16c")]
+    pub unsafe fn dot_q4<const R: usize, const N: usize>(w: [&[BlockQ4_0]; R], x: [&[BlockQ8_0]; N]) -> [[f32; N]; R] {
+        let lut = f16_table();
         let mask = _mm256_set1_epi8(0xf);
         let eight = _mm256_set1_epi8(8);
-        for (x, y) in a.iter().zip(b) {
-            let bytes = _mm_loadu_si128(x.qs.as_ptr() as *const __m128i);
+        let unpack = |i: usize, b: usize| {
+            let wb = w[i].get_unchecked(b);
+            let bytes = _mm_loadu_si128(wb.qs.as_ptr() as *const __m128i);
             // Low nibbles are weights 0..16, high nibbles 16..32.
             let both = _mm256_set_m128i(_mm_srli_epi16(bytes, 4), bytes);
-            let qx = _mm256_sub_epi8(_mm256_and_si256(both, mask), eight);
-            let qy = _mm256_loadu_si256(y.qs.as_ptr() as *const __m256i);
-            let scale = _mm256_set1_ps(d(x.d) * d(y.d));
-            acc = _mm256_fmadd_ps(scale, mul_sum_i8(qx, qy), acc);
-        }
-        hsum(acc)
+            (_mm256_sub_epi8(_mm256_and_si256(both, mask), eight), h2f(lut, wb.d))
+        };
+        dot_blocks::<R, N>(w[0].len(), unpack, x)
     }
 }
 
@@ -241,8 +286,8 @@ mod wasm {
 pub fn dot_f32(a: &[f32], b: &[f32]) -> f32 {
     if simd_enabled() {
         #[cfg(target_arch = "x86_64")]
-        // SAFETY: simd_enabled() checked AVX2 and FMA at runtime.
-        return unsafe { avx2::dot_f32(a, b) };
+        // SAFETY: simd_enabled() checked AVX2, FMA and F16C at runtime; lengths match.
+        return unsafe { avx2::dot_f32::<1, 1>([&a[..a.len().min(b.len())]], [&b[..a.len().min(b.len())]])[0][0] };
         #[cfg(all(target_arch = "wasm32", target_feature = "simd128"))]
         return wasm::dot_f32(a, b);
     }
@@ -252,8 +297,8 @@ pub fn dot_f32(a: &[f32], b: &[f32]) -> f32 {
 pub fn dot_q8(a: &[BlockQ8_0], b: &[BlockQ8_0]) -> f32 {
     if simd_enabled() {
         #[cfg(target_arch = "x86_64")]
-        // SAFETY: simd_enabled() checked AVX2 and FMA at runtime.
-        return unsafe { avx2::dot_q8(a, b) };
+        // SAFETY: simd_enabled() checked AVX2, FMA and F16C at runtime; lengths match.
+        return unsafe { avx2::dot_q8::<1, 1>([&a[..a.len().min(b.len())]], [&b[..a.len().min(b.len())]])[0][0] };
         #[cfg(all(target_arch = "wasm32", target_feature = "simd128"))]
         return wasm::dot_q8(a, b);
     }
@@ -263,8 +308,8 @@ pub fn dot_q8(a: &[BlockQ8_0], b: &[BlockQ8_0]) -> f32 {
 pub fn dot_q4(a: &[BlockQ4_0], b: &[BlockQ8_0]) -> f32 {
     if simd_enabled() {
         #[cfg(target_arch = "x86_64")]
-        // SAFETY: simd_enabled() checked AVX2 and FMA at runtime.
-        return unsafe { avx2::dot_q4(a, b) };
+        // SAFETY: simd_enabled() checked AVX2, FMA and F16C at runtime; lengths match.
+        return unsafe { avx2::dot_q4::<1, 1>([&a[..a.len().min(b.len())]], [&b[..a.len().min(b.len())]])[0][0] };
         #[cfg(all(target_arch = "wasm32", target_feature = "simd128"))]
         return wasm::dot_q4(a, b);
     }
@@ -341,6 +386,43 @@ impl Matrix {
         }
     }
 
+    /// Stack matrices with the same column count and type by rows.
+    pub fn concat(parts: &[Matrix]) -> Matrix {
+        let cols = parts[0].cols;
+        let rows = parts.iter().map(|m| m.rows).sum();
+        let w = match &parts[0].w {
+            Weights::F32(_) => Weights::F32(
+                parts
+                    .iter()
+                    .flat_map(|m| match &m.w {
+                        Weights::F32(w) => w.iter().copied(),
+                        _ => panic!("concat: mixed types"),
+                    })
+                    .collect(),
+            ),
+            Weights::Q8_0(_) => Weights::Q8_0(
+                parts
+                    .iter()
+                    .flat_map(|m| match &m.w {
+                        Weights::Q8_0(w) => w.iter().copied(),
+                        _ => panic!("concat: mixed types"),
+                    })
+                    .collect(),
+            ),
+            Weights::Q4_0(_) => Weights::Q4_0(
+                parts
+                    .iter()
+                    .flat_map(|m| match &m.w {
+                        Weights::Q4_0(w) => w.iter().copied(),
+                        _ => panic!("concat: mixed types"),
+                    })
+                    .collect(),
+            ),
+        };
+        assert!(parts.iter().all(|m| m.cols == cols));
+        Matrix { rows, cols, w }
+    }
+
     pub fn row(&self, r: usize, out: &mut [f32]) {
         let c = self.cols;
         match &self.w {
@@ -357,16 +439,81 @@ unsafe impl Sync for SyncPtr {}
 
 pub(crate) fn par_for(n: usize, f: impl Fn(usize) + Sync + Send) {
     #[cfg(feature = "threads")]
-    {
-        use rayon::prelude::*;
-        (0..n).into_par_iter().for_each(f);
-    }
+    crate::pool::par_for(n, f);
     #[cfg(not(feature = "threads"))]
     (0..n).for_each(f);
 }
 
 const ROWS_PER_TASK: usize = 16;
 const TOKEN_TILE: usize = 8;
+
+/// Dot products of weight rows `r..r + R` with activation rows `t..t + N`.
+fn tile<const R: usize, const N: usize>(
+    m: &Matrix,
+    r: usize,
+    x: &[f32],
+    xq: &[BlockQ8_0],
+    t: usize,
+    simd: bool,
+) -> [[f32; N]; R] {
+    let c = m.cols;
+    let bpr = c / QK;
+    let xs: [&[f32]; N] = std::array::from_fn(|k| &x[(t + k) * c..(t + k + 1) * c]);
+    let xqs: [&[BlockQ8_0]; N] = std::array::from_fn(|k| xq.get((t + k) * bpr..(t + k + 1) * bpr).unwrap_or(&[]));
+    match &m.w {
+        Weights::F32(w) => {
+            let ws: [&[f32]; R] = std::array::from_fn(|i| &w[(r + i) * c..(r + i + 1) * c]);
+            #[cfg(target_arch = "x86_64")]
+            if simd {
+                // SAFETY: `simd` means AVX2, FMA and F16C were detected; all rows have `c` entries.
+                return unsafe { avx2::dot_f32(ws, xs) };
+            }
+            ws.map(|wr| xs.map(|xr| if simd { dot_f32(wr, xr) } else { dot_f32_scalar(wr, xr) }))
+        }
+        Weights::Q8_0(w) => {
+            let ws: [&[BlockQ8_0]; R] = std::array::from_fn(|i| &w[(r + i) * bpr..(r + i + 1) * bpr]);
+            #[cfg(target_arch = "x86_64")]
+            if simd {
+                // SAFETY: as above; all rows have `bpr` blocks.
+                return unsafe { avx2::dot_q8(ws, xqs) };
+            }
+            ws.map(|wr| xqs.map(|xr| if simd { dot_q8(wr, xr) } else { dot_q8_scalar(wr, xr) }))
+        }
+        Weights::Q4_0(w) => {
+            let ws: [&[BlockQ4_0]; R] = std::array::from_fn(|i| &w[(r + i) * bpr..(r + i + 1) * bpr]);
+            #[cfg(target_arch = "x86_64")]
+            if simd {
+                // SAFETY: as above; all rows have `bpr` blocks.
+                return unsafe { avx2::dot_q4(ws, xqs) };
+            }
+            ws.map(|wr| xqs.map(|xr| if simd { dot_q4(wr, xr) } else { dot_q4_scalar(wr, xr) }))
+        }
+    }
+}
+
+/// Ask for the next tile's weights while this one computes. One core keeps
+/// only a few misses in flight on its own, which capped decode at ~5 GB/s.
+#[inline(always)]
+fn prefetch_rows(m: &Matrix, r: usize, count: usize) {
+    #[cfg(target_arch = "x86_64")]
+    {
+        use std::arch::x86_64::{_mm_prefetch, _MM_HINT_T0};
+        let bytes = m.bytes() / m.rows;
+        if r + count > m.rows {
+            return;
+        }
+        let base: *const u8 = match &m.w {
+            Weights::F32(w) => w.as_ptr() as *const u8,
+            Weights::Q8_0(w) => w.as_ptr() as *const u8,
+            Weights::Q4_0(w) => w.as_ptr() as *const u8,
+        };
+        for off in (r * bytes..(r + count) * bytes).step_by(64) {
+            // SAFETY: rows r..r+count exist, so every offset is inside the weight buffer;
+            // prefetch never faults anyway.
+            unsafe { _mm_prefetch::<_MM_HINT_T0>(base.add(off) as *const i8) };
+        }
+    }
+}
 
 /// `out[t, r] = dot(x[t, :], w[r, :])` for `n` tokens. `out` is `[n, rows]`.
 pub fn matmul(out: &mut [f32], x: &[f32], n: usize, m: &Matrix) {
@@ -379,8 +526,8 @@ pub fn matmul(out: &mut [f32], x: &[f32], n: usize, m: &Matrix) {
         Weights::F32(_) => Vec::new(),
         _ => crate::quant::quantize_q8_0(x),
     };
-    let bpr = cols / QK;
     let ptr = SyncPtr(out.as_mut_ptr());
+    let simd = simd_enabled();
     let tasks = rows.div_ceil(ROWS_PER_TASK);
     par_for(tasks, |task| {
         let ptr = &ptr;
@@ -388,19 +535,44 @@ pub fn matmul(out: &mut [f32], x: &[f32], n: usize, m: &Matrix) {
         let r1 = (r0 + ROWS_PER_TASK).min(rows);
         // Tiling: a tile of tokens is reused across the rows of this task, so
         // each weight row is read from memory once per tile, not once per token.
+        let write = |r: usize, t: usize, v: &[&[f32]]| {
+            for (i, row) in v.iter().enumerate() {
+                for (k, val) in row.iter().enumerate() {
+                    // SAFETY: t + k < n and r + i < rows, so the index is inside `out`,
+                    // and each (token, row) cell is written by exactly one task.
+                    unsafe { *ptr.0.add((t + k) * rows + r + i) = *val };
+                }
+            }
+        };
         for t0 in (0..n).step_by(TOKEN_TILE) {
             let t1 = (t0 + TOKEN_TILE).min(n);
-            for r in r0..r1 {
-                for t in t0..t1 {
-                    let v = match &m.w {
-                        Weights::F32(w) => dot_f32(&w[r * cols..(r + 1) * cols], &x[t * cols..(t + 1) * cols]),
-                        Weights::Q8_0(w) => dot_q8(&w[r * bpr..(r + 1) * bpr], &xq[t * bpr..(t + 1) * bpr]),
-                        Weights::Q4_0(w) => dot_q4(&w[r * bpr..(r + 1) * bpr], &xq[t * bpr..(t + 1) * bpr]),
-                    };
-                    // SAFETY: t < n and r < rows, so the index is inside `out`, and
-                    // each (t, r) cell is written by exactly one task.
-                    unsafe { *ptr.0.add(t * rows + r) = v };
+            let mut r = r0;
+            while r < r1 {
+                // 2x4 tiles while 4 tokens remain, 4x1 for single tokens (decode).
+                let rr = if r + 4 <= r1 { 4 } else { 1 };
+                prefetch_rows(m, r + 2 * rr, rr);
+                let mut t = t0;
+                while t < t1 {
+                    if t + 4 <= t1 {
+                        if rr == 4 {
+                            let a = tile::<2, 4>(m, r, x, &xq, t, simd);
+                            let b = tile::<2, 4>(m, r + 2, x, &xq, t, simd);
+                            write(r, t, &[&a[0], &a[1], &b[0], &b[1]]);
+                        } else {
+                            write(r, t, &[&tile::<1, 4>(m, r, x, &xq, t, simd)[0]]);
+                        }
+                        t += 4;
+                    } else {
+                        if rr == 4 {
+                            let v = tile::<4, 1>(m, r, x, &xq, t, simd);
+                            write(r, t, &[&v[0], &v[1], &v[2], &v[3]]);
+                        } else {
+                            write(r, t, &[&tile::<1, 1>(m, r, x, &xq, t, simd)[0]]);
+                        }
+                        t += 1;
+                    }
                 }
+                r += rr;
             }
         }
     });

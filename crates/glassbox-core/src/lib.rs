@@ -4,6 +4,8 @@ pub mod kernels;
 pub mod kv;
 pub mod load;
 pub mod model;
+#[cfg(feature = "threads")]
+pub mod pool;
 pub mod quant;
 pub mod sampler;
 pub mod tokenizer;

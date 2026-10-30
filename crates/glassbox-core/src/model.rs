@@ -56,13 +56,13 @@ impl Config {
 
 pub struct Layer {
     pub attn_norm: Vec<f32>,
-    pub wq: Matrix,
-    pub wk: Matrix,
-    pub wv: Matrix,
+    /// Q, K and V projections stacked by rows, so one matmul (one parallel
+    /// region) computes all three.
+    pub wqkv: Matrix,
     pub wo: Matrix,
     pub mlp_norm: Vec<f32>,
-    pub w_gate: Matrix,
-    pub w_up: Matrix,
+    /// Gate rows then up rows, stacked for the same reason.
+    pub w_gate_up: Matrix,
     pub w_down: Matrix,
 }
 
@@ -121,15 +121,7 @@ unsafe impl<T> Sync for SyncPtr<T> {}
 impl Model {
     pub fn quantize(&mut self, to: DType) {
         for l in &mut self.layers {
-            for m in [
-                &mut l.wq,
-                &mut l.wk,
-                &mut l.wv,
-                &mut l.wo,
-                &mut l.w_gate,
-                &mut l.w_up,
-                &mut l.w_down,
-            ] {
+            for m in [&mut l.wqkv, &mut l.wo, &mut l.w_gate_up, &mut l.w_down] {
                 *m = m.quantize(to);
             }
         }
@@ -142,7 +134,7 @@ impl Model {
     pub fn weight_bytes(&self) -> usize {
         let mut n = self.embed.bytes() + self.lm_head.as_ref().map_or(0, |m| m.bytes());
         for l in &self.layers {
-            n += [&l.wq, &l.wk, &l.wv, &l.wo, &l.w_gate, &l.w_up, &l.w_down]
+            n += [&l.wqkv, &l.wo, &l.w_gate_up, &l.w_down]
                 .iter()
                 .map(|m| m.bytes())
                 .sum::<usize>();
@@ -199,13 +191,15 @@ impl Model {
         let slots: Vec<usize> = (0..n).map(|i| cache.slot(seqs[i], pos[i])).collect();
         let tables: Vec<Vec<u32>> = seqs.iter().map(|&s| cache.seq(s).blocks.clone()).collect();
         let mut h = vec![0.0; n * d];
+        let mut qkv = vec![0.0; n * (qd + 2 * kvd)];
         let mut q = vec![0.0; n * qd];
         let mut k = vec![0.0; n * kvd];
         let mut v = vec![0.0; n * kvd];
         let mut att = vec![0.0; n * qd];
         let mut o = vec![0.0; n * d];
-        let mut gate = vec![0.0; n * c.intermediate_size];
-        let mut up = vec![0.0; n * c.intermediate_size];
+        let inter = c.intermediate_size;
+        let mut gate_up = vec![0.0; n * 2 * inter];
+        let mut act = vec![0.0; n * inter];
         let scale = 1.0 / (hd as f32).sqrt();
 
         if let Some(t) = trace.as_deref_mut() {
@@ -222,9 +216,12 @@ impl Model {
                     c.rms_norm_eps,
                 );
             }
-            matmul(&mut q, &h, n, &layer.wq);
-            matmul(&mut k, &h, n, &layer.wk);
-            matmul(&mut v, &h, n, &layer.wv);
+            matmul(&mut qkv, &h, n, &layer.wqkv);
+            for (i, row) in qkv.chunks_exact(qd + 2 * kvd).enumerate() {
+                q[i * qd..(i + 1) * qd].copy_from_slice(&row[..qd]);
+                k[i * kvd..(i + 1) * kvd].copy_from_slice(&row[qd..qd + kvd]);
+                v[i * kvd..(i + 1) * kvd].copy_from_slice(&row[qd + kvd..]);
+            }
             for i in 0..n {
                 for hq in q[i * qd..(i + 1) * qd].chunks_exact_mut(hd) {
                     rope(hq, pos[i], c.rope_theta, self.rope_interleaved);
@@ -294,12 +291,13 @@ impl Model {
                     c.rms_norm_eps,
                 );
             }
-            matmul(&mut gate, &h, n, &layer.w_gate);
-            matmul(&mut up, &h, n, &layer.w_up);
-            for (g, u) in gate.iter_mut().zip(&up) {
-                *g = *g / (1.0 + (-*g).exp()) * u;
+            matmul(&mut gate_up, &h, n, &layer.w_gate_up);
+            for (a, gu) in act.chunks_exact_mut(inter).zip(gate_up.chunks_exact(2 * inter)) {
+                for ((a, g), u) in a.iter_mut().zip(&gu[..inter]).zip(&gu[inter..]) {
+                    *a = g / (1.0 + (-g).exp()) * u;
+                }
             }
-            matmul(&mut o, &gate, n, &layer.w_down);
+            matmul(&mut o, &act, n, &layer.w_down);
             for (xv, ov) in x.iter_mut().zip(&o) {
                 *xv += ov;
             }
