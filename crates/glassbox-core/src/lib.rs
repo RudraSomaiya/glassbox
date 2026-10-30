@@ -8,6 +8,7 @@ pub mod model;
 pub mod pool;
 pub mod quant;
 pub mod sampler;
+pub mod spec;
 pub mod tokenizer;
 
 pub use kernels::DType;
