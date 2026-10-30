@@ -9,6 +9,17 @@ use crate::quant::{d, BlockQ4_0, BlockQ8_0, QK};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 static SIMD: AtomicBool = AtomicBool::new(true);
+static VNNI: AtomicBool = AtomicBool::new(true);
+
+/// Turn the AVX-VNNI int8 kernels off or on (where the CPU has them).
+pub fn set_vnni(on: bool) {
+    VNNI.store(on, Ordering::Relaxed);
+}
+
+#[cfg(target_arch = "x86_64")]
+fn vnni_enabled() -> bool {
+    VNNI.load(Ordering::Relaxed) && is_x86_feature_detected!("avxvnni")
+}
 
 /// Turn SIMD kernels off or on globally. Used by the kernel-progression benchmark.
 pub fn set_simd(on: bool) {
@@ -72,7 +83,6 @@ mod avx2 {
     //! Each kernel takes one weight row and `N` activation rows, so a weight
     //! block is loaded (and for Q4_0, unpacked) once and used `N` times. That
     //! is what makes prefill compute-bound instead of load-bound.
-    use super::*;
     use std::arch::x86_64::*;
 
     #[target_feature(enable = "avx2,fma,f16c")]
@@ -124,70 +134,109 @@ mod avx2 {
         out
     }
 
-    /// Signed i8 x i8 products of 32 lanes, summed to 8 f32 lanes. `maddubs`
-    /// wants unsigned x signed, so move the sign of `x` onto `y` first.
-    #[target_feature(enable = "avx2,fma,f16c")]
-    unsafe fn mul_sum_i8(x: __m256i, y: __m256i) -> __m256 {
-        let ax = _mm256_sign_epi8(x, x);
-        let sy = _mm256_sign_epi8(y, x);
-        let dot = _mm256_maddubs_epi16(ax, sy);
-        _mm256_cvtepi32_ps(_mm256_madd_epi16(dot, _mm256_set1_epi16(1)))
-    }
+    /// The int8 kernels, generated twice: once for plain AVX2 and once with
+    /// AVX-VNNI enabled, so VNNI instructions can never leak into the code a
+    /// CPU without them runs. `$mul` turns 32 signed byte pairs into 8 f32 lane sums.
+    macro_rules! int8_kernels {
+        ($name:ident, $feat:literal, $mul:item) => {
+            pub mod $name {
+                use super::super::*;
+                use super::{h2f, hsum};
+                use std::arch::x86_64::*;
 
-    /// Shared body of the Q8_0 and Q4_0 kernels: `unpack` turns weight block
-    /// `b` of row `i` into 32 signed bytes and its scale.
-    #[target_feature(enable = "avx2,fma,f16c")]
-    unsafe fn dot_blocks<const R: usize, const N: usize>(
-        blocks: usize,
-        unpack: impl Fn(usize, usize) -> (__m256i, f32),
-        x: [&[BlockQ8_0]; N],
-    ) -> [[f32; N]; R] {
-        let lut = f16_table();
-        let mut acc = [[_mm256_setzero_ps(); N]; R];
-        for b in 0..blocks {
-            let xq: [(__m256i, f32); N] = std::array::from_fn(|k| {
-                let xb = x[k].get_unchecked(b);
-                (_mm256_loadu_si256(xb.qs.as_ptr() as *const __m256i), h2f(lut, xb.d))
-            });
-            for i in 0..R {
-                let (qw, dw) = unpack(i, b);
-                for k in 0..N {
-                    let scale = _mm256_set1_ps(dw * xq[k].1);
-                    acc[i][k] = _mm256_fmadd_ps(scale, mul_sum_i8(qw, xq[k].0), acc[i][k]);
+                $mul
+
+                /// Shared body of the Q8_0 and Q4_0 kernels: `unpack` turns weight
+                /// block `b` of row `i` into 32 signed bytes and its scale.
+                #[target_feature(enable = $feat)]
+                unsafe fn dot_blocks<const R: usize, const N: usize>(
+                    blocks: usize,
+                    unpack: impl Fn(usize, usize) -> (__m256i, f32),
+                    x: [&[BlockQ8_0]; N],
+                ) -> [[f32; N]; R] {
+                    let lut = f16_table();
+                    let mut acc = [[_mm256_setzero_ps(); N]; R];
+                    for b in 0..blocks {
+                        let xq: [(__m256i, f32); N] = std::array::from_fn(|k| {
+                            let xb = x[k].get_unchecked(b);
+                            (_mm256_loadu_si256(xb.qs.as_ptr() as *const __m256i), h2f(lut, xb.d))
+                        });
+                        for i in 0..R {
+                            let (qw, dw) = unpack(i, b);
+                            for k in 0..N {
+                                let scale = _mm256_set1_ps(dw * xq[k].1);
+                                acc[i][k] = _mm256_fmadd_ps(scale, mul_sum_i8(qw, xq[k].0), acc[i][k]);
+                            }
+                        }
+                    }
+                    acc.map(|r| r.map(|a| hsum(a)))
+                }
+
+                /// # Safety
+                /// The CPU must support every feature in this module's target
+                /// features; all rows have the same block count.
+                #[target_feature(enable = $feat)]
+                pub unsafe fn dot_q8<const R: usize, const N: usize>(
+                    w: [&[BlockQ8_0]; R],
+                    x: [&[BlockQ8_0]; N],
+                ) -> [[f32; N]; R] {
+                    let lut = f16_table();
+                    let unpack = |i: usize, b: usize| {
+                        let wb = w[i].get_unchecked(b);
+                        (_mm256_loadu_si256(wb.qs.as_ptr() as *const __m256i), h2f(lut, wb.d))
+                    };
+                    dot_blocks::<R, N>(w[0].len(), unpack, x)
+                }
+
+                /// # Safety
+                /// As for `dot_q8`.
+                #[target_feature(enable = $feat)]
+                pub unsafe fn dot_q4<const R: usize, const N: usize>(
+                    w: [&[BlockQ4_0]; R],
+                    x: [&[BlockQ8_0]; N],
+                ) -> [[f32; N]; R] {
+                    let lut = f16_table();
+                    let mask = _mm256_set1_epi8(0xf);
+                    let eight = _mm256_set1_epi8(8);
+                    let unpack = |i: usize, b: usize| {
+                        let wb = w[i].get_unchecked(b);
+                        let bytes = _mm_loadu_si128(wb.qs.as_ptr() as *const __m128i);
+                        // Low nibbles are weights 0..16, high nibbles 16..32.
+                        let both = _mm256_set_m128i(_mm_srli_epi16(bytes, 4), bytes);
+                        (_mm256_sub_epi8(_mm256_and_si256(both, mask), eight), h2f(lut, wb.d))
+                    };
+                    dot_blocks::<R, N>(w[0].len(), unpack, x)
                 }
             }
+        };
+    }
+
+    int8_kernels!(
+        plain,
+        "avx2,fma,f16c",
+        /// `maddubs` wants unsigned x signed, so move the sign of `x` onto `y`
+        /// first; pairs of products land in i16 lanes, then `madd` widens to i32.
+        #[target_feature(enable = "avx2,fma,f16c")]
+        unsafe fn mul_sum_i8(x: __m256i, y: __m256i) -> __m256 {
+            let ax = _mm256_sign_epi8(x, x);
+            let sy = _mm256_sign_epi8(y, x);
+            let dot = _mm256_maddubs_epi16(ax, sy);
+            _mm256_cvtepi32_ps(_mm256_madd_epi16(dot, _mm256_set1_epi16(1)))
         }
-        acc.map(|r| r.map(|a| hsum(a)))
-    }
+    );
 
-    /// # Safety
-    /// The CPU must support AVX2, FMA and F16C; all rows have the same block count.
-    #[target_feature(enable = "avx2,fma,f16c")]
-    pub unsafe fn dot_q8<const R: usize, const N: usize>(w: [&[BlockQ8_0]; R], x: [&[BlockQ8_0]; N]) -> [[f32; N]; R] {
-        let lut = f16_table();
-        let unpack = |i: usize, b: usize| {
-            let wb = w[i].get_unchecked(b);
-            (_mm256_loadu_si256(wb.qs.as_ptr() as *const __m256i), h2f(lut, wb.d))
-        };
-        dot_blocks::<R, N>(w[0].len(), unpack, x)
-    }
-
-    /// # Safety
-    /// The CPU must support AVX2, FMA and F16C; all rows have the same block count.
-    #[target_feature(enable = "avx2,fma,f16c")]
-    pub unsafe fn dot_q4<const R: usize, const N: usize>(w: [&[BlockQ4_0]; R], x: [&[BlockQ8_0]; N]) -> [[f32; N]; R] {
-        let lut = f16_table();
-        let mask = _mm256_set1_epi8(0xf);
-        let eight = _mm256_set1_epi8(8);
-        let unpack = |i: usize, b: usize| {
-            let wb = w[i].get_unchecked(b);
-            let bytes = _mm_loadu_si128(wb.qs.as_ptr() as *const __m128i);
-            // Low nibbles are weights 0..16, high nibbles 16..32.
-            let both = _mm256_set_m128i(_mm_srli_epi16(bytes, 4), bytes);
-            (_mm256_sub_epi8(_mm256_and_si256(both, mask), eight), h2f(lut, wb.d))
-        };
-        dot_blocks::<R, N>(w[0].len(), unpack, x)
-    }
+    int8_kernels!(
+        vnni,
+        "avx2,fma,f16c,avxvnni",
+        /// `vpdpbusd` does the unsigned x signed multiply and the four-way sum
+        /// into i32 in one instruction (and cannot saturate).
+        #[target_feature(enable = "avx2,fma,f16c,avxvnni")]
+        unsafe fn mul_sum_i8(x: __m256i, y: __m256i) -> __m256 {
+            let ax = _mm256_sign_epi8(x, x);
+            let sy = _mm256_sign_epi8(y, x);
+            _mm256_cvtepi32_ps(_mm256_dpbusd_avx_epi32(_mm256_setzero_si256(), ax, sy))
+        }
+    );
 }
 
 // ---------- wasm simd128 ----------
@@ -298,7 +347,9 @@ pub fn dot_q8(a: &[BlockQ8_0], b: &[BlockQ8_0]) -> f32 {
     if simd_enabled() {
         #[cfg(target_arch = "x86_64")]
         // SAFETY: simd_enabled() checked AVX2, FMA and F16C at runtime; lengths match.
-        return unsafe { avx2::dot_q8::<1, 1>([&a[..a.len().min(b.len())]], [&b[..a.len().min(b.len())]])[0][0] };
+        return unsafe {
+            avx2::plain::dot_q8::<1, 1>([&a[..a.len().min(b.len())]], [&b[..a.len().min(b.len())]])[0][0]
+        };
         #[cfg(all(target_arch = "wasm32", target_feature = "simd128"))]
         return wasm::dot_q8(a, b);
     }
@@ -309,7 +360,9 @@ pub fn dot_q4(a: &[BlockQ4_0], b: &[BlockQ8_0]) -> f32 {
     if simd_enabled() {
         #[cfg(target_arch = "x86_64")]
         // SAFETY: simd_enabled() checked AVX2, FMA and F16C at runtime; lengths match.
-        return unsafe { avx2::dot_q4::<1, 1>([&a[..a.len().min(b.len())]], [&b[..a.len().min(b.len())]])[0][0] };
+        return unsafe {
+            avx2::plain::dot_q4::<1, 1>([&a[..a.len().min(b.len())]], [&b[..a.len().min(b.len())]])[0][0]
+        };
         #[cfg(all(target_arch = "wasm32", target_feature = "simd128"))]
         return wasm::dot_q4(a, b);
     }
@@ -474,8 +527,15 @@ fn tile<const R: usize, const N: usize>(
             let ws: [&[BlockQ8_0]; R] = std::array::from_fn(|i| &w[(r + i) * bpr..(r + i + 1) * bpr]);
             #[cfg(target_arch = "x86_64")]
             if simd {
-                // SAFETY: as above; all rows have `bpr` blocks.
-                return unsafe { avx2::dot_q8(ws, xqs) };
+                // SAFETY: as above, plus AVX-VNNI detected for the vnni kernels;
+                // all rows have `bpr` blocks.
+                return unsafe {
+                    if vnni_enabled() {
+                        avx2::vnni::dot_q8(ws, xqs)
+                    } else {
+                        avx2::plain::dot_q8(ws, xqs)
+                    }
+                };
             }
             ws.map(|wr| xqs.map(|xr| if simd { dot_q8(wr, xr) } else { dot_q8_scalar(wr, xr) }))
         }
@@ -483,8 +543,15 @@ fn tile<const R: usize, const N: usize>(
             let ws: [&[BlockQ4_0]; R] = std::array::from_fn(|i| &w[(r + i) * bpr..(r + i + 1) * bpr]);
             #[cfg(target_arch = "x86_64")]
             if simd {
-                // SAFETY: as above; all rows have `bpr` blocks.
-                return unsafe { avx2::dot_q4(ws, xqs) };
+                // SAFETY: as above, plus AVX-VNNI detected for the vnni kernels;
+                // all rows have `bpr` blocks.
+                return unsafe {
+                    if vnni_enabled() {
+                        avx2::vnni::dot_q4(ws, xqs)
+                    } else {
+                        avx2::plain::dot_q4(ws, xqs)
+                    }
+                };
             }
             ws.map(|wr| xqs.map(|xr| if simd { dot_q4(wr, xr) } else { dot_q4_scalar(wr, xr) }))
         }

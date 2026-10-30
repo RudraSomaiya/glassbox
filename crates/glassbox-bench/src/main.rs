@@ -135,22 +135,27 @@ fn progression(args: &[String]) {
     let dir = arg(args, "--model").expect(USAGE);
     let all = pool::threads();
     let mut steps = Vec::new();
-    for (name, dtype, simd, threads) in [
-        ("scalar, 1 thread", "f32", false, 1),
-        ("AVX2, 1 thread", "f32", true, 1),
-        (&format!("AVX2, {all} threads")[..], "f32", true, all),
-        ("Q8_0 int8 dot", "q8_0", true, all),
-        ("Q4_0 int8 dot", "q4_0", true, all),
+    for (name, dtype, simd, threads, vnni) in [
+        ("scalar, 1 thread", "f32", false, 1, false),
+        ("AVX2, 1 thread", "f32", true, 1, false),
+        (&format!("AVX2, {all} threads")[..], "f32", true, all, false),
+        ("Q8_0 int8 dot", "q8_0", true, all, false),
+        ("Q4_0 int8 dot", "q4_0", true, all, false),
+        ("Q4_0 + AVX-VNNI", "q4_0", true, all, true),
     ] {
         let model = load(dir, None, Some(dtype));
         set_simd(simd);
+        glassbox_core::kernels::set_vnni(vnni);
         pool::set_threads(threads);
         let ((pp, _), (tg, tg_sd)) = pp_tg(&model, 64, 32, 2);
         eprintln!("{name:22} pp64 {pp:7.1}  tg32 {tg:6.1} ± {tg_sd:.1} tok/s");
-        steps.push(json!({"step": name, "dtype": dtype, "simd": simd, "threads": threads,
-                          "pp64_tok_s": pp, "tg32_tok_s": tg, "tg32_sd": tg_sd}));
+        steps.push(
+            json!({"step": name, "dtype": dtype, "simd": simd, "threads": threads, "vnni": vnni,
+                          "pp64_tok_s": pp, "tg32_tok_s": tg, "tg32_sd": tg_sd}),
+        );
     }
     set_simd(true);
+    glassbox_core::kernels::set_vnni(true);
     write(
         arg(args, "--out"),
         &json!({"model": dir, "steps": steps, "meta": meta()}),
@@ -528,7 +533,12 @@ fn main() {
         Some("quality") => quality(&args),
         Some("serve") => serve(&args),
         Some("spec") => spec(&args),
-        Some("kernels") => kernels(),
+        Some("kernels") => {
+            if args.iter().any(|a| a == "--no-vnni") {
+                glassbox_core::kernels::set_vnni(false);
+            }
+            kernels()
+        }
         _ => eprintln!("{USAGE}"),
     }
 }

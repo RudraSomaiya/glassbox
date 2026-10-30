@@ -3,18 +3,18 @@
   "engine": "glassbox",
   "label": "smollm2-360m-standin",
   "meta": {
-    "commit": "ede17ff",
+    "commit": "2841c8e",
     "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
-    "date": "2026-10-30T13:49:54Z",
+    "date": "2026-10-30T16:20:24Z",
     "logical_cpus": 4,
     "simd": true
   },
   "model": "models/standin-360M",
-  "pp512_sd": 4.38701136736092,
-  "pp512_tok_s": 131.6101182829584,
+  "pp512_sd": 2.6001232997282617,
+  "pp512_tok_s": 157.22319755170068,
   "source": "gguf",
-  "tg128_sd": 0.22347550844862868,
-  "tg128_tok_s": 48.662456782667654,
+  "tg128_sd": 3.1136222161773888,
+  "tg128_tok_s": 59.563457378367,
   "threads": 4,
   "weight_mb": 384.36864
 }

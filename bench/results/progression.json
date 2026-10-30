@@ -1,8 +1,8 @@
 {
   "meta": {
-    "commit": "a3f6389",
+    "commit": "2841c8e",
     "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
-    "date": "2026-10-30T14:04:31Z",
+    "date": "2026-10-30T16:18:44Z",
     "logical_cpus": 4,
     "simd": true
   },
@@ -10,48 +10,63 @@
   "steps": [
     {
       "dtype": "f32",
-      "pp64_tok_s": 14.659939654391222,
+      "pp64_tok_s": 15.545619543055272,
       "simd": false,
       "step": "scalar, 1 thread",
-      "tg32_sd": 0.22053287318348058,
-      "tg32_tok_s": 8.523116224769502,
-      "threads": 1
+      "tg32_sd": 0.17909320428821474,
+      "tg32_tok_s": 8.714719281899503,
+      "threads": 1,
+      "vnni": false
     },
     {
       "dtype": "f32",
-      "pp64_tok_s": 186.69138761239094,
+      "pp64_tok_s": 196.46864228325217,
       "simd": true,
       "step": "AVX2, 1 thread",
-      "tg32_sd": 0.043982027556833,
-      "tg32_tok_s": 22.276509273185486,
-      "threads": 1
+      "tg32_sd": 0.25795184202159227,
+      "tg32_tok_s": 24.071040669385262,
+      "threads": 1,
+      "vnni": false
     },
     {
       "dtype": "f32",
-      "pp64_tok_s": 447.41304517205947,
+      "pp64_tok_s": 513.2284974314617,
       "simd": true,
       "step": "AVX2, 4 threads",
-      "tg32_sd": 0.16842162955071416,
-      "tg32_tok_s": 65.11689971692974,
-      "threads": 4
+      "tg32_sd": 0.0030119654941955787,
+      "tg32_tok_s": 65.45495185268994,
+      "threads": 4,
+      "vnni": false
     },
     {
       "dtype": "q8_0",
-      "pp64_tok_s": 396.1633693371496,
+      "pp64_tok_s": 407.2925676010012,
       "simd": true,
       "step": "Q8_0 int8 dot",
-      "tg32_sd": 12.190614505610583,
-      "tg32_tok_s": 177.53373788795096,
-      "threads": 4
+      "tg32_sd": 1.8005831212495167,
+      "tg32_tok_s": 188.96964445910692,
+      "threads": 4,
+      "vnni": false
     },
     {
       "dtype": "q4_0",
-      "pp64_tok_s": 395.4542014286329,
+      "pp64_tok_s": 367.72264810992374,
       "simd": true,
       "step": "Q4_0 int8 dot",
-      "tg32_sd": 10.41515591108633,
-      "tg32_tok_s": 211.99473856021444,
-      "threads": 4
+      "tg32_sd": 15.285687337632297,
+      "tg32_tok_s": 219.41085150449823,
+      "threads": 4,
+      "vnni": false
+    },
+    {
+      "dtype": "q4_0",
+      "pp64_tok_s": 424.9737537964135,
+      "simd": true,
+      "step": "Q4_0 + AVX-VNNI",
+      "tg32_sd": 20.411042146501046,
+      "tg32_tok_s": 229.859797828134,
+      "threads": 4,
+      "vnni": true
     }
   ]
 }

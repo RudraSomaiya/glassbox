@@ -3,18 +3,18 @@
   "engine": "glassbox",
   "label": "smollm2-135m-standin",
   "meta": {
-    "commit": "ede17ff",
+    "commit": "2841c8e",
     "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
-    "date": "2026-10-30T13:47:49Z",
+    "date": "2026-10-30T16:19:18Z",
     "logical_cpus": 4,
     "simd": true
   },
   "model": "models/standin-135M",
-  "pp512_sd": 8.782797158008561,
-  "pp512_tok_s": 272.57192391498023,
+  "pp512_sd": 8.96514197224469,
+  "pp512_tok_s": 327.5148920905749,
   "source": "gguf",
-  "tg128_sd": 19.123884782662362,
-  "tg128_tok_s": 195.1850269999319,
+  "tg128_sd": 2.628780187568127,
+  "tg128_tok_s": 203.85101668922593,
   "threads": 4,
   "weight_mb": 75.644928
 }
