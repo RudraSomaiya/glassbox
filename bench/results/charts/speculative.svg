@@ -23,10 +23,6 @@
 <text x="282.0" y="80.0" class="ink" font-size="13" text-anchor="start" font-weight="400">1.7B Q4_0 -&gt; 1.7B Q8_0</text>
 <rect x="459.0" y="70" width="12" height="12" rx="2" class="mark"/>
 <text x="477.0" y="80.0" class="ink" font-size="13" text-anchor="start" font-weight="400">prompt lookup -&gt; 360M (summaries)</text>
-<rect x="736.5" y="70" width="12" height="12" rx="2" class="base"/>
-<text x="754.5" y="80.0" class="ink" font-size="13" text-anchor="start" font-weight="400">tiny Q4_0 -&gt; tiny f32</text>
-<rect x="924.0" y="70" width="12" height="12" rx="2" class="glassbox"/>
-<text x="942.0" y="80.0" class="ink" font-size="13" text-anchor="start" font-weight="400">prompt lookup -&gt; tiny (summaries)</text>
 <line x1="64" x2="736" y1="328.0" y2="328.0" class="grid" stroke-width="1"/>
 <text x="56.0" y="332.0" class="ink2" font-size="11" text-anchor="end" font-weight="400">0.00</text>
 <line x1="64" x2="736" y1="270.0" y2="270.0" class="grid" stroke-width="1"/>
@@ -42,34 +38,24 @@
 <text x="501.3" y="348.0" class="ink2" font-size="12" text-anchor="middle" font-weight="400">4</text>
 <text x="720.0" y="348.0" class="ink2" font-size="12" text-anchor="middle" font-weight="400">8</text>
 <text x="736.0" y="370.0" class="ink2" font-size="12" text-anchor="end" font-weight="400">tokens drafted per round</text>
-<polyline points="64.0,315.2 282.7,319.2 501.3,321.9 720.0,324.2" fill="none" stroke-width="2.5" class="glassbox-line"/>
-<circle cx="64.0" cy="315.2" r="5" class="glassbox"><title>135M -&gt; 360M, 1: 0.55</title></circle>
-<circle cx="282.7" cy="319.2" r="5" class="glassbox"><title>135M -&gt; 360M, 2: 0.38</title></circle>
-<circle cx="501.3" cy="321.9" r="5" class="glassbox"><title>135M -&gt; 360M, 4: 0.26</title></circle>
-<circle cx="720.0" cy="324.2" r="5" class="glassbox"><title>135M -&gt; 360M, 8: 0.17</title></circle>
-<polyline points="64.0,311.9 282.7,315.2 501.3,318.8 720.0,321.8" fill="none" stroke-width="2.5" class="llamacpp-line"/>
-<circle cx="64.0" cy="311.9" r="5" class="llamacpp"><title>135M -&gt; 1.7B, 1: 0.69</title></circle>
-<circle cx="282.7" cy="315.2" r="5" class="llamacpp"><title>135M -&gt; 1.7B, 2: 0.55</title></circle>
-<circle cx="501.3" cy="318.8" r="5" class="llamacpp"><title>135M -&gt; 1.7B, 4: 0.40</title></circle>
-<circle cx="720.0" cy="321.8" r="5" class="llamacpp"><title>135M -&gt; 1.7B, 8: 0.27</title></circle>
-<polyline points="64.0,317.4 282.7,320.5 501.3,323.3 720.0,325.3" fill="none" stroke-width="2.5" class="transformers-line"/>
-<circle cx="64.0" cy="317.4" r="5" class="transformers"><title>1.7B Q4_0 -&gt; 1.7B Q8_0, 1: 0.46</title></circle>
-<circle cx="282.7" cy="320.5" r="5" class="transformers"><title>1.7B Q4_0 -&gt; 1.7B Q8_0, 2: 0.32</title></circle>
-<circle cx="501.3" cy="323.3" r="5" class="transformers"><title>1.7B Q4_0 -&gt; 1.7B Q8_0, 4: 0.20</title></circle>
-<circle cx="720.0" cy="325.3" r="5" class="transformers"><title>1.7B Q4_0 -&gt; 1.7B Q8_0, 8: 0.11</title></circle>
-<polyline points="64.0,294.4 282.7,286.8 501.3,293.1 720.0,286.2" fill="none" stroke-width="2.5" class="mark-line"/>
-<circle cx="64.0" cy="294.4" r="5" class="mark"><title>prompt lookup -&gt; 360M (summaries), 1: 1.45</title></circle>
-<circle cx="282.7" cy="286.8" r="5" class="mark"><title>prompt lookup -&gt; 360M (summaries), 2: 1.78</title></circle>
-<circle cx="501.3" cy="293.1" r="5" class="mark"><title>prompt lookup -&gt; 360M (summaries), 4: 1.50</title></circle>
-<circle cx="720.0" cy="286.2" r="5" class="mark"><title>prompt lookup -&gt; 360M (summaries), 8: 1.80</title></circle>
-<polyline points="64.0,307.6 282.7,306.5 501.3,307.7 720.0,310.3" fill="none" stroke-width="2.5" class="base-line"/>
-<circle cx="64.0" cy="307.6" r="5" class="base"><title>tiny Q4_0 -&gt; tiny f32, 1: 0.88</title></circle>
-<circle cx="282.7" cy="306.5" r="5" class="base"><title>tiny Q4_0 -&gt; tiny f32, 2: 0.93</title></circle>
-<circle cx="501.3" cy="307.7" r="5" class="base"><title>tiny Q4_0 -&gt; tiny f32, 4: 0.87</title></circle>
-<circle cx="720.0" cy="310.3" r="5" class="base"><title>tiny Q4_0 -&gt; tiny f32, 8: 0.76</title></circle>
-<polyline points="64.0,302.3 282.7,302.8 501.3,307.1 720.0,311.8" fill="none" stroke-width="2.5" class="glassbox-line"/>
-<circle cx="64.0" cy="302.3" r="5" class="glassbox"><title>prompt lookup -&gt; tiny (summaries), 1: 1.11</title></circle>
-<circle cx="282.7" cy="302.8" r="5" class="glassbox"><title>prompt lookup -&gt; tiny (summaries), 2: 1.09</title></circle>
-<circle cx="501.3" cy="307.1" r="5" class="glassbox"><title>prompt lookup -&gt; tiny (summaries), 4: 0.90</title></circle>
-<circle cx="720.0" cy="311.8" r="5" class="glassbox"><title>prompt lookup -&gt; tiny (summaries), 8: 0.70</title></circle>
+<polyline points="64.0,310.5 282.7,311.1 501.3,313.6 720.0,317.1" fill="none" stroke-width="2.5" class="glassbox-line"/>
+<circle cx="64.0" cy="310.5" r="5" class="glassbox"><title>135M -&gt; 360M, 1: 0.75</title></circle>
+<circle cx="282.7" cy="311.1" r="5" class="glassbox"><title>135M -&gt; 360M, 2: 0.73</title></circle>
+<circle cx="501.3" cy="313.6" r="5" class="glassbox"><title>135M -&gt; 360M, 4: 0.62</title></circle>
+<circle cx="720.0" cy="317.1" r="5" class="glassbox"><title>135M -&gt; 360M, 8: 0.47</title></circle>
+<polyline points="64.0,299.3 282.7,299.3 501.3,302.9 720.0,308.6" fill="none" stroke-width="2.5" class="llamacpp-line"/>
+<circle cx="64.0" cy="299.3" r="5" class="llamacpp"><title>135M -&gt; 1.7B, 1: 1.24</title></circle>
+<circle cx="282.7" cy="299.3" r="5" class="llamacpp"><title>135M -&gt; 1.7B, 2: 1.24</title></circle>
+<circle cx="501.3" cy="302.9" r="5" class="llamacpp"><title>135M -&gt; 1.7B, 4: 1.08</title></circle>
+<circle cx="720.0" cy="308.6" r="5" class="llamacpp"><title>135M -&gt; 1.7B, 8: 0.84</title></circle>
+<polyline points="64.0,310.6 282.7,310.9 501.3,312.8 720.0,315.7" fill="none" stroke-width="2.5" class="transformers-line"/>
+<circle cx="64.0" cy="310.6" r="5" class="transformers"><title>1.7B Q4_0 -&gt; 1.7B Q8_0, 1: 0.75</title></circle>
+<circle cx="282.7" cy="310.9" r="5" class="transformers"><title>1.7B Q4_0 -&gt; 1.7B Q8_0, 2: 0.74</title></circle>
+<circle cx="501.3" cy="312.8" r="5" class="transformers"><title>1.7B Q4_0 -&gt; 1.7B Q8_0, 4: 0.66</title></circle>
+<circle cx="720.0" cy="315.7" r="5" class="transformers"><title>1.7B Q4_0 -&gt; 1.7B Q8_0, 8: 0.53</title></circle>
+<polyline points="64.0,307.2 282.7,309.0 501.3,310.3 720.0,316.2" fill="none" stroke-width="2.5" class="mark-line"/>
+<circle cx="64.0" cy="307.2" r="5" class="mark"><title>prompt lookup -&gt; 360M (summaries), 1: 0.90</title></circle>
+<circle cx="282.7" cy="309.0" r="5" class="mark"><title>prompt lookup -&gt; 360M (summaries), 2: 0.82</title></circle>
+<circle cx="501.3" cy="310.3" r="5" class="mark"><title>prompt lookup -&gt; 360M (summaries), 4: 0.77</title></circle>
+<circle cx="720.0" cy="316.2" r="5" class="mark"><title>prompt lookup -&gt; 360M (summaries), 8: 0.51</title></circle>
 </svg>

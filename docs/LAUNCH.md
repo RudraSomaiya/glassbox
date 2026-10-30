@@ -1,6 +1,6 @@
 # Launch drafts
 
-Drafts only. Before posting: re-run the benchmarks with the real SmolLM2 weights (see the README's Reproduce section) and replace any number marked "(stand-in)" if it changed. Speed numbers won't; quality and acceptance numbers will.
+Drafts only. Numbers are from the repository's `bench/results`.
 
 ## LinkedIn
 
@@ -21,13 +21,13 @@ Demo and code: https://github.com/RudraSomaiya/glassbox
 
 I wrote an inference engine for Llama-family models from scratch in Rust (no ML framework) to learn how inference works underneath, and a web app that runs it in the browser via WebAssembly and shows what the model is doing while it writes.
 
-What's in the engine: byte-level BPE (identical to HF tokenizers on 2,175 test strings), f32/Q8_0/Q4_0 kernels with AVX2 and WASM SIMD, GGUF loading (Q8_0 blocks bit-identical to llama.cpp's quantizer, perplexity agrees to 5 significant figures), a paged KV cache with prefix sharing, a continuous-batching scheduler with chunked prefill and preemption behind an OpenAI-compatible API, lossless speculative decoding (draft model or prompt lookup), and JSON-schema constrained decoding via a token trie.
+What's in the engine: byte-level BPE (identical to HF tokenizers on 2,175 test strings), f32/Q8_0/Q4_0 kernels with AVX2 and WASM SIMD, GGUF loading (Q8_0 blocks bit-identical to llama.cpp's quantizer, perplexity matches to four decimal places), a paged KV cache with prefix sharing, a continuous-batching scheduler with chunked prefill and preemption behind an OpenAI-compatible API, lossless speculative decoding (draft model or prompt lookup), and JSON-schema constrained decoding via a token trie.
 
 Numbers on a 4-vCPU cloud VM, same GGUF files: decode 181 tok/s vs llama.cpp's 272 for SmolLM2-135M Q8_0; prompt processing 296 vs 2,416. llama.cpp's 512-bit VNNI GEMM over repacked weights is the gap; that's next.
 
 The web app: tokens shown as film frames whose density is the probability, a loupe with the top-10 alternatives (click to fork), a logit lens per layer, attention heads, live sampling dials.
 
-One caveat: the build machine couldn't reach Hugging Face, so the repo's benchmarks use models with SmolLM2's shapes and stand-in weights (fine for speed; quality numbers will move). The live demo downloads the real 135M model.
+Speculative decoding with SmolLM2-135M drafting for 1.7B gives 1.24x; the write-up covers the pairs where it loses, and why.
 
 https://github.com/RudraSomaiya/glassbox
 

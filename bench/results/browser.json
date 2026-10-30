@@ -1,11 +1,11 @@
 {
   "engine": "glassbox-wasm",
-  "model": "standin-135M",
+  "model": "SmolLM2-135M-Instruct",
   "dtype": "Q8_0",
   "threads": 1,
   "simd128": true,
-  "tg64_tok_s": 24.731432104500982,
+  "tg64_tok_s": 23.7847480303272,
   "note": "headless Chromium on a 4-vCPU cloud VM; real laptops will differ",
   "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
-  "date": "2026-10-30T16:02:30.224Z"
+  "date": "2026-10-30T21:19:31.983Z"
 }

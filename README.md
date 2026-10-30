@@ -8,14 +8,14 @@ No ML framework: the tokenizer, the SIMD kernels, quantization, the paged KV cac
 
 **Live demo:** https://rudrasomaiya.github.io/glassbox/ (the model downloads once, 269 MB, and runs on your machine)
 
-> **About the weights in these numbers.** The cloud machine that built this could not reach Hugging Face, so every benchmark and screenshot here uses stand-ins: models with SmolLM2's exact shapes (random weights for speed benchmarks, plus a tiny model trained locally for 14 minutes so the views have realistic distributions to show). Speed depends only on the shapes. Quality numbers and the recorded traces will change with the real weights; `scripts/record_traces.sh` and the commands in [Reproduce](#reproduce) regenerate everything. The live demo downloads the real SmolLM2-135M-Instruct.
+> **About the weights in these numbers.** The speed benchmarks were measured on models with SmolLM2's exact shapes and random weights, while Hugging Face was out of reach from the build machine; speed depends only on the shapes. Correctness checks, perplexity, speculative decoding, the screenshots and the recorded replays use the real SmolLM2 Instruct checkpoints.
 
 ## What's in it
 
 - **Tokenizer:** byte-level BPE read from `tokenizer.json`, pre-tokenizer and special tokens included. Identical to Hugging Face `tokenizers` on 2,175 test strings (English, code, emoji, Hindi, Hinglish, whitespace).
 - **Model:** Llama family (RMSNorm, RoPE, grouped-query attention, SwiGLU, tied or untied head), from safetensors or GGUF. Logits match Hugging Face `transformers` in f32 to within 4.5e-6, and 64-token greedy continuations are identical on 21 prompts.
 - **Kernels:** f32, Q8_0 and Q4_0 matrix multiplication with AVX2+FMA and AVX-VNNI (picked at runtime) and WebAssembly SIMD, each checked against a scalar version. Register-tiled, prefetching, on a spinning thread pool.
-- **Quantization:** GGUF-compatible Q8_0 and Q4_0. The Q8_0 quantizer produces bit-identical blocks to llama.cpp's; perplexity agrees with llama.cpp's to five significant figures on the same files.
+- **Quantization:** GGUF-compatible Q8_0 and Q4_0. The Q8_0 quantizer produces bit-identical blocks to llama.cpp's; perplexity on the same files matches llama.cpp's to four decimal places in f32 (7.7685 for 135M, 5.8766 for 360M).
 - **KV cache:** paged in 16-token blocks with reference counts, copy-on-write forks and automatic prefix sharing.
 - **Server:** continuous batching with chunked prefill and preemption, OpenAI-compatible `/v1/chat/completions` and `/v1/completions` with streaming, `/metrics` for Prometheus, `/v1/trace` to record a run for the web app.
 - **Speculative decoding:** draft model or prompt lookup, with rejection sampling that keeps the output distribution exactly the target's (tested by a chi-square test).
@@ -54,9 +54,9 @@ Speculative decoding (greedy, output identical to the target alone; speedup in d
 
 ![Speculative decoding speedup](bench/results/charts/speculative.svg)
 
-The honest summary: on stand-in weights it mostly loses. Two different random models agree 0% of the time, and even a 4-bit copy of the same random 1.7B agrees only 4% (random logits are nearly tied). The trained tiny stand-in drafts well (78-94% accepted) but is too small for a drafter to be cheaper (0.76-0.93x). Prompt lookup, which needs no second model, wins where the output copies the input: 1.45-1.80x at 99% acceptance on the 360M shapes. Checking several tokens in one pass is not free here either: two tokens cost about 1.6 times one, because the kernel is compute-bound. Real weights will change the acceptance numbers; the scripts re-run them.
+It pays off where the drafter is much cheaper than the target: 135M drafting for 1.7B is accepted 62-68% of the time and gives 1.24x with one or two drafted tokens. Drafting for 360M (only 3x the cost of 135M) loses at 0.75x despite 70% acceptance, and a 4-bit copy of 1.7B agrees 85% of the time but is too expensive to draft with (0.75x). Prompt lookup on summaries loses too (0.90x): the real model paraphrases rather than copying the passage. Longer drafts never help here, because checking several tokens in one pass is not free on this CPU: two tokens cost about 1.6 times one, since the kernel is compute-bound.
 
-In headless Chromium on the same VM, single-threaded WebAssembly runs the 135M shapes at Q8_0 at 24.7 tokens per second (laptops will differ; this is a headless 4-vCPU VM).
+In headless Chromium on the same VM, single-threaded WebAssembly runs the 135M shapes at Q8_0 at 23.8 tokens per second (laptops will differ; this is a headless 4-vCPU VM).
 
 ## Quick start
 
@@ -155,7 +155,7 @@ python3 tools/reference/charts.py
 
 - Slower than llama.cpp everywhere, and much slower at prompt processing (no 512-bit kernels or repacked GEMM yet).
 - CPU only. The browser build is single-threaded.
-- The benchmark and trace data in this repository are from stand-in weights; see the note at the top.
+- The speed benchmarks were measured on random weights with SmolLM2's shapes; see the note at the top.
 - JSON schema support is a practical subset: object, array, string, number, integer, boolean, null, enum, nesting. Objects are written with every listed property, in schema order.
 - One architecture family (Llama). Qwen3 (QK-norm) is not done.
 

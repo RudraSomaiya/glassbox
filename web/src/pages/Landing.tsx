@@ -101,7 +101,7 @@ export function Landing() {
           </div>
           <div>
             <dt>Kernels</dt>
-            <dd>AVX2 and FMA on x86, SIMD128 in WebAssembly, each checked against a scalar twin.</dd>
+            <dd>AVX2, FMA and AVX-VNNI on x86, SIMD128 in WebAssembly, each checked against a scalar twin.</dd>
           </div>
           <div>
             <dt>Weights</dt>
@@ -121,7 +121,7 @@ export function Landing() {
           </div>
           <div>
             <dt>Checked against</dt>
-            <dd>Hugging Face transformers token for token; llama.cpp perplexity to five significant figures.</dd>
+            <dd>Hugging Face transformers token for token; llama.cpp perplexity to four decimal places.</dd>
           </div>
           <div>
             <dt>This page</dt>

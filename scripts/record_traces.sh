@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Record the replay traces bundled with the web app (web/src/traces/*.json).
-#   scripts/record_traces.sh                      # stand-in model (models/standin-tiny)
 #   SMALL=models/SmolLM2-135M-Instruct BIG=models/SmolLM2-1.7B-Instruct scripts/record_traces.sh
+#   scripts/record_traces.sh                      # stand-in model (models/standin-tiny)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 SMALL=${SMALL:-models/standin-tiny}
@@ -14,8 +14,8 @@ cargo build --release -p glassbox-server >/dev/null
 
 $bin trace --model "$SMALL" --dtype q8_0 --prompt "$Q" -n 48 --temp 0.6 --seed 2 --out $out/hero.json
 $bin anatomy --model "$SMALL" --prompt "$Q" --out $out/anatomy.json
-# Same model at 4 bits drafting for itself at full precision, and prompt lookup.
-$bin spec-trace --model "$BIG" --draft "$BIG" --draft-dtype q4_0 -k 4 -n 64 \
+# The small model drafting for the big one (the pair that pays off), and prompt lookup.
+$bin spec-trace --model "$BIG" --draft "$SMALL" --draft-dtype q8_0 -k 2 -n 64 \
   --prompt "Describe how a lighthouse works." --out $out/speculative.json
 $bin spec-trace --model "$BIG" --lookup -k 4 -n 64 \
   --prompt "Repeat this sentence twice: the quick brown fox jumps over the lazy dog." --out $out/lookup.json
