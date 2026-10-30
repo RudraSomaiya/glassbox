@@ -10,3 +10,6 @@ __pycache__/
 .DS_Store
 .env
 third_party/
+web/src/wasm/
+web/public/models
+.taste-skill/

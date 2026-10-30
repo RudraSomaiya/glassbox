@@ -1,0 +1,242 @@
+@import '@fontsource-variable/archivo/wdth.css';
+
+/* Light table: luminous cool white, ink, C-41 film base, grease pencil. */
+:root {
+  --ground: #eef1ee;
+  --surface: #fbfcfb;
+  --sunk: #e2e6e2;
+  --ink: #121413;
+  --ink-2: #444a46;
+  --film: #c8692e;
+  --film-ink: #1d0d03;
+  --film-dense: 29 10 2; /* rgb of D-max on the base */
+  --film-edge: #9a4818;
+  --mark: #c92a22;
+  --mark-ink: #ffffff;
+  --sprocket: #eef1ee;
+  --focus: #c92a22;
+
+  --face: 'Archivo Variable', 'Archivo', system-ui, sans-serif;
+  --step--1: 0.875rem;
+  --step-0: 1.0625rem;
+  --step-1: 1.375rem;
+  --step-2: clamp(1.75rem, 1.2rem + 2vw, 2.5rem);
+  --step-3: clamp(2.6rem, 1.3rem + 5.6vw, 6rem);
+
+  --gutter: clamp(16px, 3vw, 40px);
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --quick: 120ms;
+  --standard: 240ms;
+  --slow: 480ms;
+
+  color-scheme: light;
+}
+
+/* Darkroom: warm black, paper-white ink, safelight. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --ground: #13100d;
+    --surface: #1c1814;
+    --sunk: #0c0a08;
+    --ink: #efe7da;
+    --ink-2: #b3a899;
+    --film: #8a4419;
+    --film-ink: #fbeadb;
+    --film-dense: 8 3 0;
+    --film-edge: #5c2a0c;
+    --mark: #ff6b3d;
+    --mark-ink: #1a0800;
+    --sprocket: #13100d;
+    --focus: #ff6b3d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --ground: #13100d;
+  --surface: #1c1814;
+  --sunk: #0c0a08;
+  --ink: #efe7da;
+  --ink-2: #b3a899;
+  --film: #8a4419;
+  --film-ink: #fbeadb;
+  --film-dense: 8 3 0;
+  --film-edge: #5c2a0c;
+  --mark: #ff6b3d;
+  --mark-ink: #1a0800;
+  --sprocket: #13100d;
+  --focus: #ff6b3d;
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scrollbar-color: var(--ink-2) var(--ground);
+}
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--face);
+  font-size: var(--step-0);
+  line-height: 1.5;
+  font-variation-settings: 'wdth' 100;
+  font-feature-settings: 'tnum' 1;
+}
+
+::selection {
+  background: var(--mark);
+  color: var(--mark-ink);
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+a {
+  color: inherit;
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1.5px;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 800;
+  text-wrap: balance;
+}
+
+p {
+  margin: 0;
+  max-width: 68ch;
+  text-wrap: pretty;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Buttons: square-cornered, one fill. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6em;
+  min-height: 48px;
+  padding: 0 1.25rem;
+  border: 0;
+  border-radius: 0;
+  background: var(--ink);
+  color: var(--ground);
+  font-weight: 700;
+  font-variation-settings: 'wdth' 110;
+  cursor: pointer;
+  transition:
+    transform var(--quick) var(--ease),
+    background var(--quick) var(--ease);
+}
+.btn:hover {
+  background: var(--mark);
+  color: var(--mark-ink);
+}
+.btn:active {
+  transform: translateY(1px) scale(0.98);
+}
+.btn:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+.btn--quiet {
+  background: transparent;
+  color: var(--ink);
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+.btn--quiet:hover {
+  box-shadow: inset 0 0 0 2px var(--mark);
+  color: var(--mark);
+  background: transparent;
+}
+
+/* Top bar: wordmark, a few links, one action. */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: clamp(12px, 3vw, 36px);
+  padding: 18px var(--gutter);
+}
+.bar__mark {
+  font-weight: 900;
+  font-size: 1.25rem;
+  font-variation-settings: 'wdth' 125;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+  margin-right: auto;
+}
+.bar__links {
+  display: flex;
+  gap: clamp(12px, 2.5vw, 28px);
+}
+.bar__links a {
+  text-decoration: none;
+  font-weight: 600;
+}
+.bar__links a[aria-current='page'] {
+  text-decoration: underline;
+  text-decoration-color: var(--mark);
+  text-decoration-thickness: 3px;
+}
+.bar__links a:hover {
+  color: var(--mark);
+}
+.theme {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+@media (max-width: 640px) {
+  .bar {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+  .bar__links {
+    order: 3;
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+.page {
+  padding: 0 var(--gutter) 120px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}

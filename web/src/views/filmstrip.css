@@ -1,0 +1,251 @@
+/* The strip: C-41 orange base, a row of sprockets above and below every line
+   of frames. Each line is exactly --row tall so the sprocket tile lines up. */
+.strip-wrap {
+  position: relative;
+  --row: 72px;
+  --band: 14px;
+}
+
+.strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  padding: 0 10px;
+  min-height: var(--row);
+  background-color: var(--film);
+  background-image:
+    radial-gradient(circle at 50% 50%, var(--sprocket) 0 3.6px, transparent 4.2px),
+    radial-gradient(circle at 50% 50%, var(--sprocket) 0 3.6px, transparent 4.2px);
+  background-size:
+    16px var(--row),
+    16px var(--row);
+  background-position:
+    0 calc(var(--band) / 2 - var(--row) / 2),
+    0 calc(var(--row) - var(--band) / 2 - var(--row) / 2);
+  background-repeat: repeat;
+}
+
+.strip__cell {
+  display: flex;
+  height: var(--row);
+  padding: var(--band) 2px;
+}
+
+.frame {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 18px;
+  height: 100%;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 3px;
+  /* Density: clear when the model was sure, toward D-max when it wasn't. */
+  background: color-mix(in srgb, var(--film), rgb(var(--film-dense)) calc((1 - var(--p)) * 88%));
+  color: var(--film-ink);
+  font-size: 1.125rem;
+  font-weight: 500;
+  white-space: pre;
+  cursor: pointer;
+  animation: develop var(--slow) var(--ease) both;
+  transition: transform var(--quick) var(--ease);
+}
+.frame--dense {
+  color: #fbeadb;
+}
+.frame:hover,
+.frame[aria-expanded='true'] {
+  transform: translateY(-2px);
+  box-shadow: 0 0 0 2px var(--mark);
+}
+.frame--selected {
+  box-shadow: 0 0 0 3px var(--mark);
+}
+.frame:focus-visible {
+  outline-offset: 2px;
+}
+/* Edge print: the frame number every fifth frame, in the lower sprocket band. */
+.frame[data-n]::after {
+  content: attr(data-n);
+  position: absolute;
+  left: 2px;
+  bottom: calc(var(--band) * -1 - 1px);
+  font-size: 12px;
+  line-height: var(--band);
+  font-weight: 600;
+  font-variation-settings: 'wdth' 70;
+  color: var(--film-ink);
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+/* A latent image developing: soft and pale, then sharp at its true density. */
+@keyframes develop {
+  from {
+    filter: blur(5px);
+    opacity: 0;
+    background: color-mix(in srgb, var(--film), white 30%);
+  }
+}
+
+.strip__gate {
+  width: 10px;
+  margin: var(--band) 0;
+  background: var(--mark);
+  animation: gate 0.9s steps(2) infinite;
+}
+@keyframes gate {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.glyph-nl {
+  width: 0.8em;
+  height: 0.8em;
+  opacity: 0.8;
+}
+.glyph-empty {
+  display: inline-block;
+  width: 0.3em;
+}
+
+/* The loupe: a lens magnifying the frame, and the step wedge of what else
+   the model considered at that position. */
+.loupe {
+  position: absolute;
+  left: clamp(0px, var(--x, 0px), calc(100% - 340px));
+  top: var(--y, 100%);
+  z-index: 5;
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 16px;
+  width: min(380px, 100%);
+  padding: 16px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow:
+    0 18px 40px -12px rgb(0 0 0 / 0.35),
+    0 2px 6px rgb(0 0 0 / 0.12);
+  animation: loupe-in var(--standard) var(--ease) both;
+}
+.loupe--flip {
+  left: auto;
+  right: 0;
+}
+@keyframes loupe-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+}
+.loupe__lens {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--film);
+  color: var(--film-ink);
+  box-shadow:
+    inset 0 0 0 6px var(--ink),
+    inset 0 0 0 9px var(--film-edge);
+  overflow: hidden;
+  font-size: 1.6rem;
+  font-weight: 700;
+  white-space: pre;
+}
+.loupe__head {
+  font-size: var(--step--1);
+  margin-bottom: 8px;
+  color: var(--ink-2);
+}
+.loupe__head strong {
+  color: var(--ink);
+}
+.loupe__hint {
+  margin-top: 8px;
+  font-size: var(--step--1);
+  color: var(--ink-2);
+}
+
+.wedge {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+.wedge__row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  width: 100%;
+  min-height: 30px;
+  padding: 0 8px;
+  align-items: center;
+  border: 0;
+  background: var(--sunk);
+  text-align: left;
+  cursor: pointer;
+  white-space: pre;
+  overflow: hidden;
+}
+.wedge__row:disabled {
+  cursor: default;
+}
+.wedge__row:not(:disabled):hover {
+  box-shadow: inset 0 0 0 2px var(--mark);
+}
+.wedge__row--chosen {
+  font-weight: 700;
+}
+.wedge__bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--p) * 100%);
+  background: var(--film);
+  opacity: 0.55;
+  transform-origin: left;
+  animation: bar-in var(--standard) var(--ease) both;
+}
+.wedge__row--chosen .wedge__bar {
+  opacity: 0.9;
+}
+@keyframes bar-in {
+  from {
+    transform: scaleX(0);
+  }
+}
+.wedge__text,
+.wedge__p {
+  position: relative;
+  font-size: var(--step--1);
+}
+.wedge__p {
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .strip-wrap {
+    --row: 64px;
+    --band: 12px;
+  }
+  .frame {
+    font-size: 1rem;
+    padding: 0 5px;
+  }
+  .loupe {
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    margin-top: 12px;
+    grid-template-columns: 64px 1fr;
+  }
+  .loupe__lens {
+    width: 64px;
+    height: 64px;
+    font-size: 1.1rem;
+  }
+}
