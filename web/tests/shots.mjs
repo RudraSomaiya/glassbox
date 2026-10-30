@@ -14,7 +14,7 @@ const only = process.env.ONLY?.split(',')
 mkdirSync(out, { recursive: true })
 
 const port = 5198
-const server = spawn('npx', ['vite', '--port', String(port), '--strictPort'], {
+const server = spawn('node_modules/.bin/vite', ['--port', String(port), '--strictPort'], {
   stdio: 'ignore',
   env: { ...process.env, VITE_MODEL_BASE: `/models/${model}/` },
 })

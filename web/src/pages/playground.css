@@ -10,7 +10,7 @@
 }
 .play__form {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(200px, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 16px 24px;
   align-items: end;
 }
@@ -54,9 +54,6 @@
     grid-template-columns: 1fr;
   }
 }
-.play__form {
-  grid-template-columns: minmax(0, 1fr) auto;
-}
 .play__h2 {
   font-size: var(--step-1);
   font-variation-settings: 'wdth' 110;
@@ -91,4 +88,41 @@
 .play__spec {
   display: grid;
   gap: 56px;
+}
+
+.play__sample {
+  margin-top: 20px;
+}
+.play__sample-label {
+  font-size: var(--step--1);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+/* Wide screens: the strip and the views side by side, so the frame you pick
+   and what it shows stay in view together. */
+@media (min-width: 1200px) {
+  .play {
+    grid-template-columns: minmax(0, 1fr) minmax(560px, 0.95fr);
+    column-gap: 48px;
+    align-items: start;
+  }
+  .play__title,
+  .play__form {
+    grid-column: 1 / -1;
+  }
+  .play__bench {
+    position: sticky;
+    top: 24px;
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+  }
+}
+
+/* Phones: a long reply scrolls inside the strip, so the views stay one swipe away. */
+@media (max-width: 640px) {
+  .play__stream .strip {
+    max-height: 60vh;
+    overflow-y: auto;
+  }
 }

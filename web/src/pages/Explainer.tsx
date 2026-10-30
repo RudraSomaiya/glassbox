@@ -3,7 +3,7 @@ import type { Alt, Inspect, Sampler } from '../engine/protocol'
 import anatomy from '../traces/anatomy.json'
 import scheduler from '../traces/scheduler.json'
 import speculative from '../traces/lookup.json'
-import { Glyphs, pct } from '../views/FilmStrip'
+import { describe, Glyphs, pct } from '../views/FilmStrip'
 import { Attention, Lens } from '../views/Inspector'
 import { Memory } from '../views/Memory'
 import { Sampling } from '../views/Sampling'
@@ -90,8 +90,11 @@ export function Explainer() {
         <h1>What happens when a language model writes one word</h1>
         <p className="ex__lede">
           One forward pass, from the text you type to the token that comes out, using numbers recorded from the Glassbox
-          engine running {a.model}
-          {a.standin ? ', a small stand-in model trained locally, because the real SmolLM2 weights were out of reach when this was recorded' : ''}.
+          engine running{' '}
+          {a.standin
+            ? 'a small stand-in model trained locally, because the real SmolLM2 weights were out of reach when this was recorded'
+            : a.model}
+          .
           The prompt is <q>{a.prompt}</q>
         </p>
       </header>
@@ -124,7 +127,7 @@ export function Explainer() {
       <Step id="embed" title="Each token becomes a list of numbers" figure={<Barcode values={a.embedding} />}>
         <p>
           The token’s number picks one row of the embedding table: {a.config.hidden} numbers that place it in a space where
-          related tokens sit near each other. Shown here is the row for <q>{last.text.trim() || last.text}</q>, darker
+          related tokens sit near each other. Shown here is the row for {describe(last.text)}, darker
           for larger values, warm for positive and cool for negative.
         </p>
         <p>From here on, every token is this vector, and the model only adds to it.</p>
@@ -181,7 +184,7 @@ export function Explainer() {
         <p>
           After the final layer, the last token’s vector is compared with every row of the vocabulary. The result is one
           score (a logit) per token, {a.config.vocab.toLocaleString()} of them. Softmax turns scores into probabilities: here
-          the top choice is <q>{winner.text}</q> at {pct(winner.p)}.
+          the top choice is {describe(winner.text)} at {pct(winner.p)}.
         </p>
       </Step>
 

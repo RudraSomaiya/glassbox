@@ -26,6 +26,12 @@
   padding: var(--band) 2px;
 }
 
+.strip__cell--latent {
+  visibility: hidden;
+}
+.strip__cell--latent .frame {
+  animation: none;
+}
 .frame {
   position: relative;
   display: inline-flex;
@@ -197,19 +203,17 @@
   gap: 2px;
 }
 .wedge__row {
-  position: relative;
   display: grid;
-  grid-template-columns: 1fr auto;
-  width: 100%;
-  min-height: 30px;
-  padding: 0 8px;
+  grid-template-columns: minmax(4.5em, max-content) 1fr 3.6em;
+  gap: 10px;
   align-items: center;
+  width: 100%;
+  min-height: 32px;
+  padding: 2px 4px;
   border: 0;
-  background: var(--sunk);
+  background: transparent;
   text-align: left;
   cursor: pointer;
-  white-space: pre;
-  overflow: hidden;
 }
 .wedge__row:disabled {
   cursor: default;
@@ -218,33 +222,47 @@
   outline: 2px solid var(--mark);
   outline-offset: -2px;
 }
-.wedge__row--chosen {
-  font-weight: 700;
+/* Each alternative as a frame of its own density, on the same wedge as the strip. */
+.wedge__swatch {
+  padding: 3px 7px;
+  border-radius: 3px;
+  white-space: pre;
+  font-size: var(--step--1);
+  font-weight: 600;
+  background: color-mix(in srgb, var(--film), rgb(var(--film-dense)) calc(var(--d) * 90%));
+  color: var(--film-ink);
+}
+.wedge__swatch--dense {
+  color: var(--film-ink-dense);
+}
+.wedge__row--chosen .wedge__swatch {
+  outline: 2px solid var(--mark);
+  outline-offset: 1px;
+}
+.wedge__track {
+  height: 10px;
+  background: var(--sunk);
 }
 .wedge__bar {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: calc(var(--p) * 100%);
-  background: var(--film);
-  opacity: 0.55;
+  display: block;
+  height: 100%;
+  background: var(--ink-2);
   transform-origin: left;
+  transform: scaleX(var(--w));
   animation: bar-in var(--standard) var(--ease) both;
 }
 .wedge__row--chosen .wedge__bar {
-  opacity: 0.9;
+  background: var(--mark);
 }
 @keyframes bar-in {
   from {
     transform: scaleX(0);
   }
 }
-.wedge__text,
 .wedge__p {
-  position: relative;
   font-size: var(--step--1);
-}
-.wedge__p {
   font-weight: 600;
+  text-align: right;
 }
 
 @media (max-width: 640px) {

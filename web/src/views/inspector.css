@@ -53,10 +53,124 @@
 }
 .lens__rest {
   display: flex;
-  gap: 14px;
+  flex-wrap: wrap;
+  gap: 4px 14px;
   color: var(--ink-2);
+}
+.lens__alt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.lens__chip {
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--sunk);
+  color: var(--ink);
   white-space: pre;
-  overflow: hidden;
+}
+@media (max-width: 640px) {
+  .lens__row {
+    grid-template-columns: 2.2em minmax(6em, max-content) 4em;
+  }
+  .lens__rest {
+    grid-column: 2 / -1;
+  }
+}
+
+.attn__layer {
+  display: grid;
+  grid-template-columns: 6em 1fr;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+}
+.attn__layer input {
+  accent-color: var(--mark);
+  min-height: 44px;
+}
+.attn__heads {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 6px;
+}
+.attn__head {
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+  border: 0;
+  background: var(--sunk);
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+}
+.attn__head--on {
+  outline: 2px solid var(--mark);
+  outline-offset: -2px;
+}
+.attn__thumb {
+  display: flex;
+  height: 36px;
+  gap: 1px;
+  align-items: flex-end;
+}
+.attn__thumb i {
+  flex: 1;
+  height: calc(12% + var(--a) * 88%);
+  background: var(--heat);
+}
+.attn__text {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 26px 3px;
+  padding-top: 40px;
+  line-height: 1.2;
+}
+.attn__arcs {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.attn__arcs path {
+  fill: none;
+  stroke: var(--mark);
+  stroke-width: calc(1px + var(--a) * 3px);
+  opacity: calc(0.35 + var(--a) * 0.65);
+}
+.attn__tok {
+  position: relative;
+  padding: 4px 3px;
+  white-space: pre;
+  /* Heat: the token's share of the attention, as a tile of the heat colour. */
+  background: color-mix(in srgb, var(--heat) calc(var(--a) * var(--heat-max)), transparent);
+  color: var(--ink);
+  border-radius: 2px;
+}
+.attn__tok--q {
+  outline: 2px solid var(--mark);
+  outline-offset: 1px;
+  font-weight: 700;
+}
+.attn__pct {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--mark);
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .lens__row {
+    grid-template-columns: 2.2em minmax(6em, max-content) 4em;
+  }
+  .lens__rest {
+    grid-column: 2 / -1;
+  }
 }
 
 .attn__layer {

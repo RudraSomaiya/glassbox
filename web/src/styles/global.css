@@ -13,6 +13,9 @@
   --film-ink-dense: #ffffff;
   --film-dense: 29 10 2; /* rgb of D-max on the base */
   --film-edge: #9a4818;
+  /* Attention heat on the page ground. */
+  --heat: #c8692e;
+  --heat-max: 100%;
   --mark: #c92a22;
   --mark-ink: #ffffff;
   --focus: #c92a22;
@@ -46,6 +49,8 @@
     --film-ink-dense: #fbeadb;
     --film-dense: 8 3 0;
     --film-edge: #5c2a0c;
+    --heat: #e08a4a;
+    --heat-max: 55%;
     --mark: #ff6b3d;
     --mark-ink: #1a0800;
     --focus: #ff6b3d;
@@ -63,6 +68,8 @@
   --film-ink-dense: #fbeadb;
   --film-dense: 8 3 0;
   --film-edge: #5c2a0c;
+  --heat: #e08a4a;
+  --heat-max: 55%;
   --mark: #ff6b3d;
   --mark-ink: #1a0800;
   --focus: #ff6b3d;

@@ -80,7 +80,10 @@ export function Sampling({ dist, sampler, onChange }: { dist: Alt[]; sampler: Sa
           </li>
         ))}
       </ol>
-      <p className="samp__note">Top {dist.length} of the vocabulary shown; the long tail beyond it holds the rest of the raw probability.</p>
+      <p className="samp__note">
+        The {shown} most likely tokens are shown; the dials act on the top {dist.length}, and the long tail of the vocabulary
+        holds the rest of the raw probability.
+      </p>
     </figure>
   )
 }

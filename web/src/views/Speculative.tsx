@@ -71,8 +71,14 @@ export function Speculative({ trace }: { trace: SpecTrace }) {
   return (
     <figure className="replay" aria-labelledby="spec-cap">
       <figcaption id="spec-cap">
-        <strong>Speculative decoding.</strong> The drafter ({trace.draft}) guesses {trace.k} tokens at a time; the target (
-        {trace.model}) checks all of them in one pass. Output is identical to the target alone.
+        <strong>Speculative decoding.</strong>{' '}
+        {trace.draft === 'prompt lookup'
+          ? `Prompt lookup guesses ${trace.k} tokens at a time by copying what followed the last few words earlier in the text`
+          : trace.standin
+            ? `A 4-bit copy of the stand-in model guesses ${trace.k} tokens at a time`
+            : `The drafter (${trace.draft}) guesses ${trace.k} tokens at a time`}
+        ; the {trace.standin ? 'full-precision stand-in model' : `target (${trace.model})`} checks all of them in one pass.
+        Output is identical to the target alone.
       </figcaption>
       <div className="replay__controls">
         <button type="button" className="btn btn--quiet" onClick={() => setPlaying(!playing)}>

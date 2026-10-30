@@ -65,6 +65,32 @@
   height: auto;
   overflow: visible;
 }
+/* Line charts keep a readable text size: capped wide, scrolled narrow. */
+.chart__scroll {
+  overflow-x: auto;
+}
+.chart__scroll svg {
+  max-width: 720px;
+  min-width: 560px;
+}
+.multiples svg {
+  max-width: 440px;
+}
+.spec-multiples {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 28px 40px;
+}
+.spec-multiples h4 {
+  margin: 0 0 6px;
+  font-size: var(--step--1);
+  font-weight: 700;
+}
+.ref {
+  stroke: var(--ink-2);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
 .multiples {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -109,22 +135,14 @@
   border-radius: 2px;
 }
 /* Categorical slots, validated for colour-vision deficiency in both themes. */
+/* Glassbox is the film; the engines it is measured against are ink and grey,
+   so the page's one colour stays on the thing being studied. */
 :root {
-  --c-glassbox: #c8692e;
-  --c-llamacpp: #2f72a8;
-  --c-transformers: #6f8a2a;
+  --c-glassbox: var(--film);
+  --c-llamacpp: var(--ink);
+  --c-transformers: var(--ink-2);
   --c-mark: var(--mark);
   --c-base: var(--ink-2);
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --c-llamacpp: #3f86c4;
-    --c-transformers: #7f9a35;
-  }
-}
-:root[data-theme='dark'] {
-  --c-llamacpp: #3f86c4;
-  --c-transformers: #7f9a35;
 }
 .sw--glassbox,
 .bar--glassbox,
@@ -213,11 +231,22 @@
   max-width: 760px;
   font-size: var(--step--1);
 }
+.table-scroll {
+  overflow-x: auto;
+}
 .bench th,
 .bench td {
   text-align: left;
-  padding: 8px 12px 8px 0;
-  border-bottom: 1px solid var(--sunk);
+  padding: 8px 16px 8px 0;
+  white-space: nowrap;
+}
+.bench tbody tr:nth-child(odd) {
+  background: color-mix(in srgb, var(--sunk) 60%, transparent);
+}
+.bench td.num,
+.bench th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 .bench th {
   font-weight: 700;
@@ -228,4 +257,21 @@
   min-height: 44px;
   display: flex;
   align-items: center;
+  gap: 10px;
+  list-style: none;
+}
+.bench details summary::-webkit-details-marker {
+  display: none;
+}
+.bench details summary::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform var(--quick) var(--ease);
+}
+.bench details[open] summary::before {
+  transform: rotate(45deg);
 }

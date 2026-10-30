@@ -33,7 +33,7 @@
 }
 .replay__legend {
   list-style: none;
-  margin: 0;
+  margin: 0 0 12px;
   padding: 0;
   display: flex;
   flex-wrap: wrap;

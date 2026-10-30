@@ -9,7 +9,13 @@ import './landing.css'
 
 const PROMPT = hero.prompt
 
-/** Replays a recorded run at the speed it was recorded, then holds and loops. */
+// The colophon, set as frames of the strip (densities are decoration here, not data).
+const COLOPHON: [string, number][] = [
+  ['Glassbox', 0.95], [' was', 0.8], [' built', 0.6], [' by', 0.9], [' Rudra', 0.3], [' Somaiya', 0.97],
+  ['.', 0.99], [' MIT', 0.2], [' licence', 0.7], ['.', 0.99],
+]
+
+/** How many frames of a recorded run to show: grows at the recorded speed, holds, loops. */
 function useReplay(tokens: Token[], perSecond = 14) {
   const [n, setN] = useState(0)
   useEffect(() => {
@@ -20,14 +26,14 @@ function useReplay(tokens: Token[], perSecond = 14) {
     const id = setInterval(() => setN((k) => (k >= tokens.length + perSecond * 4 ? 0 : k + 1)), 1000 / perSecond)
     return () => clearInterval(id)
   }, [tokens, perSecond])
-  return tokens.slice(0, Math.min(n, tokens.length))
+  return Math.min(n, tokens.length)
 }
 
 export function Landing() {
   const s = useEngine()
-  const replay = useReplay(hero.tokens as Token[])
+  const shown = useReplay(hero.tokens as Token[])
   const live = s.tokens.length > 0
-  const tokens = live ? s.tokens : replay
+  const tokens = live ? s.tokens : (hero.tokens as Token[])
 
   useEffect(() => {
     // Once the model is loaded, the hero runs it for real.
@@ -51,6 +57,7 @@ export function Landing() {
             tokens={tokens}
             label={live ? 'The model’s answer, live' : 'A recorded answer, replaying'}
             live={s.status === 'running'}
+            visible={live ? undefined : shown}
             onFork={live ? (i, alt) => engine.fork(i, alt, greedy, 80) : undefined}
           />
           <div className="hero__actions">
@@ -143,11 +150,23 @@ export function Landing() {
         </a>
       </nav>
 
-      <footer className="foot">
-        <p className="foot__mark" aria-hidden>
-          Glassbox
+      <footer className="foot strip-wrap">
+        <p className="strip foot__strip">
+          {COLOPHON.map(([text, p], i) => (
+            <span key={i} className="strip__cell">
+              <span
+                className={'frame' + (density(p) > FLIP ? ' frame--dense' : '')}
+                style={{ '--d': density(p) } as React.CSSProperties}
+              >
+                {text}
+              </span>
+            </span>
+          ))}
         </p>
-        <p>Built by Rudra Somaiya. MIT licence.</p>
+        <p className="foot__links">
+          <a href={GITHUB}>Source on GitHub</a>
+          <a href="#/bench">How it was measured</a>
+        </p>
       </footer>
     </div>
   )

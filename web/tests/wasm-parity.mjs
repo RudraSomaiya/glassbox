@@ -15,7 +15,7 @@ const golden = JSON.parse(readFileSync(new URL(`../../models/${model}/golden.jso
 const cases = golden.cases.slice(0, 3).map((c) => ({ ids: c.ids, want: c.greedy.slice(0, 32) }))
 
 const port = 5199
-const server = spawn('npx', ['vite', '--port', String(port), '--strictPort'], { stdio: 'ignore' })
+const server = spawn('node_modules/.bin/vite', ['--port', String(port), '--strictPort'], { stdio: 'ignore' })
 for (let i = 0; ; i++) {
   if (await fetch(`http://localhost:${port}/`).then((r) => r.ok, () => false)) break
   if (i > 100) throw new Error('vite did not start')

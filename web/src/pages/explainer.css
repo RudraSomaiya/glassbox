@@ -9,7 +9,8 @@
   letter-spacing: -0.035em;
   font-variation-settings: 'wdth' 125;
   font-weight: 900;
-  max-width: 16ch;
+  max-width: 22ch;
+  text-wrap: balance;
 }
 .ex__lede {
   margin-top: 28px;

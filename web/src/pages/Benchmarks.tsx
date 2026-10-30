@@ -95,14 +95,17 @@ function SingleChart({ metric, title }: { metric: 0 | 1; title: string }) {
         })}
       </div>
       <details>
-        <summary>The numbers</summary>
+        <summary>Show the numbers</summary>
+        <div className="table-scroll">
         <table>
           <thead>
             <tr>
               <th>Model</th>
               <th>Type</th>
               {ENGINES.map((e) => (
-                <th key={e.key}>{e.name}</th>
+                <th key={e.key} className="num">
+                  {e.name}
+                </th>
               ))}
             </tr>
           </thead>
@@ -113,13 +116,16 @@ function SingleChart({ metric, title }: { metric: 0 | 1; title: string }) {
                   <td>{label(m)}</td>
                   <td>{dt.toUpperCase()}</td>
                   {ENGINES.map((e) => (
-                    <td key={e.key}>{rows[m][`${e.key}/${dt}`]?.[metric].toFixed(1) ?? '–'}</td>
+                    <td key={e.key} className="num">
+                      {rows[m][`${e.key}/${dt}`]?.[metric].toFixed(1) ?? '–'}
+                    </td>
                   ))}
                 </tr>
               )),
             )}
           </tbody>
         </table>
+        </div>
       </details>
     </figure>
   )
@@ -168,6 +174,7 @@ function LineChart({ title, note, series, y, unit }: { title: string; note: stri
         <p>{note}</p>
         <Legend items={series} />
       </figcaption>
+      <div className="chart__scroll">
       <svg viewBox={`0 0 ${W} ${H + 36}`} role="img" aria-label={title}>
         {[0, 0.25, 0.5, 0.75, 1].map((f) => (
           <g key={f}>
@@ -196,6 +203,7 @@ function LineChart({ title, note, series, y, unit }: { title: string; note: stri
           </g>
         ))}
       </svg>
+      </div>
     </figure>
   )
 }
@@ -231,15 +239,16 @@ function Serving() {
           <h3>Prefix caching</h3>
           <p>Every request starts with the same 384-token system prompt. With the cache, those blocks are computed once.</p>
         </figcaption>
+        <div className="table-scroll">
         <table>
           <thead>
             <tr>
               <th>Rate</th>
               <th>Mode</th>
-              <th>Tokens/s</th>
-              <th>TTFT p50</th>
-              <th>TTFT p99</th>
-              <th>Prompt tokens reused</th>
+              <th className="num">Tokens/s</th>
+              <th className="num">TTFT p50</th>
+              <th className="num">TTFT p99</th>
+              <th className="num">Prompt tokens reused</th>
             </tr>
           </thead>
           <tbody>
@@ -247,59 +256,105 @@ function Serving() {
               <tr key={i}>
                 <td>{r.result.rate_rps} req/s</td>
                 <td>{r.mode}</td>
-                <td>{r.result.throughput_tok_s.toFixed(0)}</td>
-                <td>{r.result.ttft_p50_s.toFixed(2)} s</td>
-                <td>{r.result.ttft_p99_s.toFixed(2)} s</td>
-                <td>
+                <td className="num">{r.result.throughput_tok_s.toFixed(0)}</td>
+                <td className="num">{r.result.ttft_p50_s.toFixed(2)} s</td>
+                <td className="num">{r.result.ttft_p99_s.toFixed(2)} s</td>
+                <td className="num">
                   {r.result.prefix_hit_tokens.toLocaleString()} of {r.result.prompt_tokens.toLocaleString()}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
       </figure>
     </>
   )
 }
 
+/** One small chart per drafter/target pair: speedup against draft length, with 1x marked. */
 function Spec() {
   const random = byName('/speculative.json')
   const trained = byName('/speculative-trained.json')
   if (!random && !trained) return null
-  const d = { runs: [...(random?.runs ?? []), ...(trained?.runs ?? [])] }
-  const pairs = [...new Set(d.runs.map((r: Json) => r.pair))] as string[]
-  const keys = ['glassbox', 'llamacpp', 'transformers', 'mark', 'base', 'glassbox']
+  const runs: Json[] = [...(random?.runs ?? []), ...(trained?.runs ?? [])]
+  const pairs = [...new Set(runs.map((r) => r.pair))] as string[]
+  const ymax = Math.max(2, ...runs.map((r) => r.speedup))
+  const W = 260
+  const H = 130
+  const L = 34
+  const ks = [...new Set(runs.map((r) => r.k as number))].sort((a, b) => a - b)
+  const px = (k: number) => L + (ks.indexOf(k) / (ks.length - 1)) * (W - L - 12)
+  const py = (v: number) => 8 + (H - 8) * (1 - v / ymax)
+  const nice = (p: string) => p.replace(' -> ', ' → ')
   return (
     <>
-      <LineChart
-        title="Speculative decoding: speedup by draft length"
-        note="Decode speedup over the target alone (greedy, identical output). Below 1, drafting costs more than it saves: on stand-in weights the drafters rarely agree with the targets, and the trained stand-in is too small for a drafter to be much cheaper."
-        y="tokens drafted per round"
-        unit="×"
-        series={pairs.map((p, i) => ({ key: keys[i % keys.length], name: p, pts: d.runs.filter((r: Json) => r.pair === p).map((r: Json) => [r.k, r.speedup]) }))}
-      />
+      <figure className="chart">
+        <figcaption>
+          <h3>Speculative decoding: speedup by draft length</h3>
+          <p>
+            Decode time against the target alone (greedy, identical output). Above the dashed line it helps; below, the
+            drafting costs more than it saves. On stand-in weights draft models rarely agree with their targets, and the
+            trained stand-in is too small for a drafter to be much cheaper. Prompt lookup wins where the output copies the
+            input.
+          </p>
+        </figcaption>
+        <div className="spec-multiples">
+          {pairs.map((p) => {
+            const pts = runs.filter((r) => r.pair === p).sort((a, b) => a.k - b.k)
+            const best = pts.reduce((a, b) => (b.speedup > a.speedup ? b : a))
+            return (
+              <div key={p}>
+                <h4>{nice(p)}{runs.indexOf(pts[0]) >= (random?.runs.length ?? 0) ? ' (trained stand-in)' : ''}</h4>
+                <svg viewBox={`0 0 ${W} ${H + 24}`} role="img" aria-label={`${nice(p)}: best ${best.speedup.toFixed(2)} times at k=${best.k}`}>
+                  <line x1={L} x2={W - 8} y1={py(1)} y2={py(1)} className="ref" />
+                  <text x={L - 6} y={py(1) + 4} className="tick" textAnchor="end">1×</text>
+                  <text x={L - 6} y={py(ymax) + 10} className="tick" textAnchor="end">{ymax.toFixed(1)}×</text>
+                  <polyline points={pts.map((r) => `${px(r.k)},${py(r.speedup)}`).join(' ')} className="line line--glassbox" />
+                  {pts.map((r) => (
+                    <circle key={r.k} cx={px(r.k)} cy={py(r.speedup)} r={4} className="dot dot--glassbox">
+                      <title>{`k=${r.k}: ${r.speedup.toFixed(2)}×, ${(r.acceptance * 100).toFixed(0)}% accepted`}</title>
+                    </circle>
+                  ))}
+                  <text x={px(best.k)} y={py(best.speedup) - 9} className="val" textAnchor="middle">
+                    {best.speedup.toFixed(2)}×
+                  </text>
+                  {ks.map((k) => (
+                    <text key={k} x={px(k)} y={H + 18} className="tick" textAnchor="middle">
+                      {k}
+                    </text>
+                  ))}
+                </svg>
+              </div>
+            )
+          })}
+        </div>
+        <p className="bench__read">Horizontal axis: tokens drafted per round.</p>
+      </figure>
       <details className="chart">
-        <summary>Acceptance rates</summary>
-        <table>
-          <thead>
-            <tr>
-              <th>Pair</th>
-              <th>k</th>
-              <th>Accepted</th>
-              <th>Speedup</th>
-            </tr>
-          </thead>
-          <tbody>
-            {d.runs.map((r: Json, i: number) => (
-              <tr key={i}>
-                <td>{r.pair}</td>
-                <td>{r.k}</td>
-                <td>{(r.acceptance * 100).toFixed(0)}%</td>
-                <td>{r.speedup.toFixed(2)}×</td>
+        <summary>Show acceptance rates</summary>
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Pair</th>
+                <th className="num">k</th>
+                <th className="num">Accepted</th>
+                <th className="num">Speedup</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {runs.map((r, i) => (
+                <tr key={i}>
+                  <td>{nice(r.pair)}</td>
+                  <td className="num">{r.k}</td>
+                  <td className="num">{(r.acceptance * 100).toFixed(0)}%</td>
+                  <td className="num">{r.speedup.toFixed(2)}×</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </details>
     </>
   )
@@ -318,26 +373,28 @@ function Quality() {
           random weights the value sits near the vocabulary size; what matters is that the engines agree.
         </p>
       </figcaption>
-      <table>
+      <div className="table-scroll">
+        <table>
         <thead>
           <tr>
             <th>Type</th>
-            <th>Glassbox</th>
-            <th>llama.cpp</th>
-            <th>Top-1 agreement with f32</th>
+            <th className="num">Glassbox</th>
+            <th className="num">llama.cpp</th>
+            <th className="num">Top-1 agreement with f32</th>
           </tr>
         </thead>
         <tbody>
           {q.results.map((r: Json) => (
             <tr key={r.dtype}>
               <td>{r.dtype.toUpperCase()}</td>
-              <td>{r.ppl.toFixed(2)}</td>
-              <td>{l?.[r.dtype]?.toFixed(2) ?? '–'}</td>
-              <td>{(r.top1_agreement_vs_f32 * 100).toFixed(1)}%</td>
+              <td className="num">{r.ppl.toFixed(2)}</td>
+              <td className="num">{l?.[r.dtype]?.toFixed(2) ?? '–'}</td>
+              <td className="num">{(r.top1_agreement_vs_f32 * 100).toFixed(1)}%</td>
             </tr>
           ))}
         </tbody>
       </table>
+        </div>
     </figure>
   )
 }

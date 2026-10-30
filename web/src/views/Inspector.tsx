@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Inspect } from '../engine/protocol'
-import { density, FLIP, Glyphs, pct } from './FilmStrip'
+import { density, describe, FLIP, Glyphs, pct } from './FilmStrip'
 import './inspector.css'
 
 export type Tok = { id: number; text: string }
@@ -41,8 +41,11 @@ export function Lens({ data, chosen, vocabText }: { data: Inspect; chosen: numbe
               <span className="lens__p">{pct(p)}</span>
               <span className="lens__rest" aria-label="runners-up">
                 {l.top.slice(1, 3).map(([rid, rp]) => (
-                  <span key={rid}>
-                    <Glyphs text={vocabText(rid)} /> {pct(rp)}
+                  <span key={rid} className="lens__alt">
+                    <span className="lens__chip">
+                      <Glyphs text={vocabText(rid)} />
+                    </span>
+                    {pct(rp)}
                   </span>
                 ))}
               </span>
@@ -56,7 +59,8 @@ export function Lens({ data, chosen, vocabText }: { data: Inspect; chosen: numbe
 
 /**
  * Attention of one token over everything before it: small multiples of every
- * head in a layer, and arcs over the text for the selected head.
+ * head in a layer, and, for the selected head, the weights as heat on the text
+ * with arcs from the query to the tokens it leaned on most.
  */
 export function Attention({ data, tokens, query }: { data: Inspect; tokens: Tok[]; query: number }) {
   const layers = data.attention.length
@@ -68,12 +72,39 @@ export function Attention({ data, tokens, query }: { data: Inspect; tokens: Tok[
   const from = Math.max(0, query - 47)
   const shown = tokens.slice(from, query + 1)
   const max = Math.max(1e-9, ...w.slice(from))
+  const top = w
+    .map((v, i) => [v, i] as const)
+    .slice(from, query + 1)
+    .sort((a, b) => b[0] - a[0])
+    .slice(0, 5)
+  const textRef = useRef<HTMLDivElement>(null)
+  const [geo, setGeo] = useState<{ x: number; y: number }[]>([])
+  const [size, setSize] = useState({ w: 0, h: 0 })
 
+  // Token positions, measured after layout, for the arcs.
+  useLayoutEffect(() => {
+    const el = textRef.current
+    if (!el) return
+    const measure = () => {
+      const box = el.getBoundingClientRect()
+      setSize({ w: box.width, h: box.height })
+      setGeo([...el.querySelectorAll<HTMLElement>('.attn__tok')].map((t) => {
+        const r = t.getBoundingClientRect()
+        return { x: r.left - box.left + r.width / 2, y: r.top - box.top }
+      }))
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [layer, head, query, tokens.length])
+
+  const q = geo[query - from]
   return (
     <figure className="attn" aria-labelledby="attn-cap">
       <figcaption id="attn-cap">
-        <strong>Where it looked.</strong> Layer {layer + 1}, head {head + 1}: the darker the tile, the more this token’s
-        query matched that earlier token’s key.
+        <strong>Where it looked.</strong> The query is {describe(tokens[query]?.text ?? '')} at position {query}, layer{' '}
+        {layer + 1}, head {head + 1}. Darker tiles got more of its attention; the arcs go to the five it leaned on most.
       </figcaption>
       <label className="attn__layer">
         <span>Layer {layer + 1}</span>
@@ -101,21 +132,46 @@ export function Attention({ data, tokens, query }: { data: Inspect; tokens: Tok[
           )
         })}
       </div>
-      <div className="attn__text">
-        {shown.map((t, i) => {
-          const a = (w[from + i] ?? 0) / max
+      <div className="attn__text" ref={textRef}>
+        {q && (
+          <svg className="attn__arcs" width={size.w} height={size.h} aria-hidden>
+            {top.map(([v, i]) => {
+              const k = geo[i - from]
+              if (!k || i === query) return null
+              const lift = 18 + Math.min(60, Math.abs(q.x - k.x) / 6) + Math.abs(q.y - k.y) / 3
+              const cy = Math.min(q.y, k.y) - lift
+              return (
+                <path
+                  key={i}
+                  d={`M${q.x},${q.y + 2} Q${(q.x + k.x) / 2},${cy} ${k.x},${k.y + 2}`}
+                  style={{ '--a': v / max } as React.CSSProperties}
+                />
+              )
+            })}
+          </svg>
+        )}
+        {shown.map((t, n) => {
+          const i = from + n
+          const rank = top.findIndex(([, j]) => j === i)
           return (
             <span
-              key={from + i}
-              className={'attn__tok' + (from + i === query ? ' attn__tok--q' : '')}
-              style={{ '--a': a } as React.CSSProperties}
-              title={`${pct(w[from + i] ?? 0)} of the attention`}
+              key={i}
+              className={'attn__tok' + (i === query ? ' attn__tok--q' : '')}
+              style={{ '--a': (w[i] ?? 0) / max } as React.CSSProperties}
             >
               <Glyphs text={t.text} />
+              {rank >= 0 && rank < 3 && <small className="attn__pct">{pct(w[i])}</small>}
             </span>
           )
         })}
       </div>
+      <ol className="sr-only">
+        {top.map(([v, i]) => (
+          <li key={i}>
+            {describe(tokens[i]?.text ?? '')} at position {i}: {pct(v)}
+          </li>
+        ))}
+      </ol>
     </figure>
   )
 }

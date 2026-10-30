@@ -11,6 +11,8 @@ import { Speculative, type SpecTrace } from '../views/Speculative'
 import scheduler from '../traces/scheduler.json'
 import speculative from '../traces/speculative.json'
 import lookup from '../traces/lookup.json'
+import hero from '../traces/hero.json'
+import type { Token } from '../engine/protocol'
 import './playground.css'
 
 const VIEWS = ['Layers', 'Attention', 'Memory', 'Sampling', 'Batching', 'Speculative'] as const
@@ -82,11 +84,19 @@ export function Playground() {
             }}
           />
         ) : (
-          <p className="play__empty">
-            {ready
-              ? 'Write a message and press Write. Each token lands as a frame on the strip.'
-              : 'Load the model to start. It runs entirely on your machine; nothing is sent anywhere.'}
-          </p>
+          <>
+            <p className="play__empty">
+              {ready
+                ? 'Write a message and press Write. Each token lands as a frame on the strip.'
+                : 'Load the model to start. It runs entirely on your machine; nothing is sent anywhere. Until then, here is a recorded reply; Batching and Speculative work without the model.'}
+            </p>
+            {!ready && (
+              <div className="play__sample">
+                <p className="play__sample-label">Recorded: “{hero.prompt}”</p>
+                <FilmStrip tokens={hero.tokens as Token[]} label="A recorded reply" />
+              </div>
+            )}
+          </>
         )}
         <p className="play__stats">
           {s.prefill && `Read ${s.prefill.tokens} prompt tokens in ${Math.round(s.prefill.ms)} ms. `}
