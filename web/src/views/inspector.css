@@ -41,7 +41,8 @@
   color: #fbeadb;
 }
 .lens__row--hit .lens__tok {
-  box-shadow: 0 0 0 2px var(--mark);
+  outline: 2px solid var(--mark);
+  outline-offset: 1px;
 }
 .lens__row--decided .lens__layer {
   color: var(--mark);
@@ -85,7 +86,8 @@
   text-align: left;
 }
 .attn__head--on {
-  box-shadow: inset 0 0 0 2px var(--mark);
+  outline: 2px solid var(--mark);
+  outline-offset: -2px;
 }
 .attn__thumb {
   display: flex;
@@ -111,6 +113,7 @@
   border-radius: 2px;
 }
 .attn__tok--q {
-  box-shadow: inset 0 -3px 0 var(--mark);
+  text-decoration: underline 3px var(--mark);
+  text-underline-offset: 4px;
   font-weight: 700;
 }

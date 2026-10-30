@@ -79,7 +79,7 @@ export function Attention({ data, tokens, query }: { data: Inspect; tokens: Tok[
         <span>Layer {layer + 1}</span>
         <input type="range" min={0} max={layers - 1} value={layer} onChange={(e) => setLayer(Number(e.target.value))} />
       </label>
-      <div className="attn__heads" role="radiogroup" aria-label="Attention head">
+      <div className="attn__heads" role="group" aria-label="Attention head">
         {Array.from({ length: heads }, (_, h) => {
           const row = data.attention[layer][h]
           const m = Math.max(1e-9, ...row.slice(from))
@@ -87,8 +87,7 @@ export function Attention({ data, tokens, query }: { data: Inspect; tokens: Tok[
             <button
               key={h}
               type="button"
-              role="radio"
-              aria-checked={h === head}
+              aria-pressed={h === head}
               className={'attn__head' + (h === head ? ' attn__head--on' : '')}
               onClick={() => setHead(h)}
             >

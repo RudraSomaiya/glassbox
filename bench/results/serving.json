@@ -1,0 +1,234 @@
+{
+  "dtype": "Q8_0",
+  "meta": {
+    "commit": "bf40445",
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "date": "2026-10-30T15:03:05Z",
+    "logical_cpus": 4,
+    "simd": true
+  },
+  "model": "models/standin-135M",
+  "runs": [
+    {
+      "mode": "continuous batching",
+      "result": {
+        "itl_p50_s": 0.020561229,
+        "itl_p99_s": 0.335107068,
+        "mean_batch_tokens": 4.947980613893376,
+        "preemptions": 0,
+        "prefix_hit_tokens": 0,
+        "prompt_tokens": 8429,
+        "rate_rps": 0.5,
+        "requests": 48,
+        "throughput_tok_s": 66.07572341153812,
+        "ttft_p50_s": 0.716204806,
+        "ttft_p99_s": 1.90115466,
+        "wall_s": 104.925071449
+      },
+      "workload": "mixed"
+    },
+    {
+      "mode": "one at a time",
+      "result": {
+        "itl_p50_s": 0.008112815,
+        "itl_p99_s": 0.019469131,
+        "mean_batch_tokens": 2.2088561950093752,
+        "preemptions": 0,
+        "prefix_hit_tokens": 0,
+        "prompt_tokens": 8429,
+        "rate_rps": 0.5,
+        "requests": 48,
+        "throughput_tok_s": 66.02187135489434,
+        "ttft_p50_s": 3.071402038,
+        "ttft_p99_s": 10.844196248,
+        "wall_s": 105.010655677
+      },
+      "workload": "mixed"
+    },
+    {
+      "mode": "continuous batching",
+      "result": {
+        "itl_p50_s": 0.152767923,
+        "itl_p99_s": 1.715215816,
+        "mean_batch_tokens": 28.35925925925926,
+        "preemptions": 0,
+        "prefix_hit_tokens": 0,
+        "prompt_tokens": 8429,
+        "rate_rps": 1.0,
+        "requests": 48,
+        "throughput_tok_s": 98.44585705532023,
+        "ttft_p50_s": 1.635410877,
+        "ttft_p99_s": 8.482817074,
+        "wall_s": 70.424497357
+      },
+      "workload": "mixed"
+    },
+    {
+      "mode": "one at a time",
+      "result": {
+        "itl_p50_s": 0.007733439,
+        "itl_p99_s": 0.023469832,
+        "mean_batch_tokens": 2.2088561950093752,
+        "preemptions": 0,
+        "prefix_hit_tokens": 0,
+        "prompt_tokens": 8429,
+        "rate_rps": 1.0,
+        "requests": 48,
+        "throughput_tok_s": 78.73518305327417,
+        "ttft_p50_s": 20.657354693,
+        "ttft_p99_s": 36.284473954,
+        "wall_s": 88.054662873
+      },
+      "workload": "mixed"
+    },
+    {
+      "mode": "continuous batching",
+      "result": {
+        "itl_p50_s": 0.158013726,
+        "itl_p99_s": 1.637329936,
+        "mean_batch_tokens": 42.421052631578945,
+        "preemptions": 0,
+        "prefix_hit_tokens": 0,
+        "prompt_tokens": 8429,
+        "rate_rps": 2.0,
+        "requests": 48,
+        "throughput_tok_s": 109.08998491794296,
+        "ttft_p50_s": 3.825236686,
+        "ttft_p99_s": 23.978146631,
+        "wall_s": 63.553038395
+      },
+      "workload": "mixed"
+    },
+    {
+      "mode": "one at a time",
+      "result": {
+        "itl_p50_s": 0.007948723,
+        "itl_p99_s": 0.0164164,
+        "mean_batch_tokens": 2.2088561950093752,
+        "preemptions": 0,
+        "prefix_hit_tokens": 0,
+        "prompt_tokens": 8429,
+        "rate_rps": 2.0,
+        "requests": 48,
+        "throughput_tok_s": 81.70314168533943,
+        "ttft_p50_s": 31.454651699,
+        "ttft_p99_s": 57.759043791,
+        "wall_s": 84.855978081
+      },
+      "workload": "mixed"
+    },
+    {
+      "mode": "continuous batching",
+      "result": {
+        "itl_p50_s": 0.163937627,
+        "itl_p99_s": 1.466691919,
+        "mean_batch_tokens": 42.77653631284916,
+        "preemptions": 0,
+        "prefix_hit_tokens": 0,
+        "prompt_tokens": 8429,
+        "rate_rps": 4.0,
+        "requests": 48,
+        "throughput_tok_s": 107.33049470619657,
+        "ttft_p50_s": 8.501400006,
+        "ttft_p99_s": 37.088726308,
+        "wall_s": 64.594876032
+      },
+      "workload": "mixed"
+    },
+    {
+      "mode": "one at a time",
+      "result": {
+        "itl_p50_s": 0.007649374,
+        "itl_p99_s": 0.015968282,
+        "mean_batch_tokens": 2.2088561950093752,
+        "preemptions": 0,
+        "prefix_hit_tokens": 0,
+        "prompt_tokens": 8429,
+        "rate_rps": 4.0,
+        "requests": 48,
+        "throughput_tok_s": 85.18466312676487,
+        "ttft_p50_s": 37.158684834,
+        "ttft_p99_s": 67.198111338,
+        "wall_s": 81.387890091
+      },
+      "workload": "mixed"
+    },
+    {
+      "mode": "prefix cache",
+      "result": {
+        "itl_p50_s": 0.0260835,
+        "itl_p99_s": 0.281090936,
+        "mean_batch_tokens": 6.289348171701113,
+        "preemptions": 0,
+        "prefix_hit_tokens": 18048,
+        "prompt_tokens": 20190,
+        "rate_rps": 2.0,
+        "requests": 48,
+        "throughput_tok_s": 71.04524258424007,
+        "ttft_p50_s": 0.226301792,
+        "ttft_p99_s": 1.45297645,
+        "wall_s": 26.208651449
+      },
+      "workload": "shared system prompt"
+    },
+    {
+      "mode": "no prefix cache",
+      "result": {
+        "itl_p50_s": 0.217835006,
+        "itl_p99_s": 1.958637966,
+        "mean_batch_tokens": 220.04,
+        "preemptions": 0,
+        "prefix_hit_tokens": 0,
+        "prompt_tokens": 20190,
+        "rate_rps": 2.0,
+        "requests": 48,
+        "throughput_tok_s": 23.471888649129916,
+        "ttft_p50_s": 26.289155857,
+        "ttft_p99_s": 50.968135631,
+        "wall_s": 79.328938026
+      },
+      "workload": "shared system prompt"
+    },
+    {
+      "mode": "prefix cache",
+      "result": {
+        "itl_p50_s": 0.151831374,
+        "itl_p99_s": 0.806951192,
+        "mean_batch_tokens": 46.0,
+        "preemptions": 0,
+        "prefix_hit_tokens": 18048,
+        "prompt_tokens": 20190,
+        "rate_rps": 8.0,
+        "requests": 48,
+        "throughput_tok_s": 106.31716238754963,
+        "ttft_p50_s": 2.668887111,
+        "ttft_p99_s": 7.685933163,
+        "wall_s": 17.513635223
+      },
+      "workload": "shared system prompt"
+    },
+    {
+      "mode": "no prefix cache",
+      "result": {
+        "itl_p50_s": 0.202364793,
+        "itl_p99_s": 2.11990711,
+        "mean_batch_tokens": 220.04,
+        "preemptions": 0,
+        "prefix_hit_tokens": 0,
+        "prompt_tokens": 20190,
+        "rate_rps": 8.0,
+        "requests": 48,
+        "throughput_tok_s": 22.195621668179566,
+        "ttft_p50_s": 38.203929216,
+        "ttft_p99_s": 73.088318898,
+        "wall_s": 83.890418923
+      },
+      "workload": "shared system prompt"
+    }
+  ],
+  "threads": 4,
+  "workloads": {
+    "mixed": "48 requests, prompts 32-320 random tokens, replies 32-256 tokens, greedy, Poisson arrivals",
+    "shared system prompt": "48 requests, one 384-token system prompt + 16-64 token user part, replies 16-64 tokens"
+  }
+}

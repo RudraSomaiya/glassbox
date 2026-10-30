@@ -54,7 +54,7 @@ The server batches requests into the same forward pass. Continuous batching mean
 
 What made me trust it was a property test: random mixes of prompts, lengths, aborts and forced preemptions on a tiny random model, checking that every sequence's greedy output is bit-for-bit what it would be alone, and that no block is ever leaked. Bit-for-bit holds because every output of a matrix multiplication is one dot product whose summation order doesn't depend on what else is in the batch.
 
-SERVING_PARAGRAPH
+With 48 chat-sized requests arriving at random (Poisson) on the 135M shapes, continuous batching kept the median time to first token at 0.7 s at half a request per second, against 3.1 s for serving one request at a time, and 3.8 s against 31.5 s at two a second. It also showed me my limits: above about one request a second the engine saturates, because batched decode runs on the same matrix kernel that makes my prefill slow. The prefix cache was the most dramatic number in the project: with a shared 384-token system prompt, median time to first token went from 26.3 s to 0.23 s, since every request after the first skips most of its prompt.
 
 ## Guess ahead, check in bulk
 

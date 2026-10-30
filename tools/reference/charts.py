@@ -18,11 +18,13 @@ OUT = os.path.join(ROOT, "charts")
 ENGINES = [("glassbox", "Glassbox"), ("llamacpp", "llama.cpp"), ("transformers", "transformers")]
 STYLE = """<style>
   .bg { fill: #fbfcfb } .ink { fill: #121413 } .ink2 { fill: #444a46 } .grid { stroke: #dfe3df }
-  .glassbox { fill: #c8692e } .llamacpp { fill: #2f72a8 } .transformers { fill: #6f8a2a }
+  .glassbox { fill: #c8692e } .llamacpp { fill: #2f72a8 } .transformers { fill: #6f8a2a } .mark { fill: #c92a22 }
+  .glassbox-line { stroke: #c8692e } .llamacpp-line { stroke: #2f72a8 } .transformers-line { stroke: #6f8a2a } .mark-line { stroke: #c92a22 }
   text { font-family: Archivo, system-ui, sans-serif; font-variant-numeric: tabular-nums }
   @media (prefers-color-scheme: dark) {
     .bg { fill: #1c1814 } .ink { fill: #efe7da } .ink2 { fill: #b3a899 } .grid { stroke: #3a332c }
-    .llamacpp { fill: #3f86c4 } .transformers { fill: #7f9a35 }
+    .llamacpp { fill: #3f86c4 } .transformers { fill: #7f9a35 } .mark { fill: #ff6b3d }
+    .llamacpp-line { stroke: #3f86c4 } .transformers-line { stroke: #7f9a35 } .mark-line { stroke: #ff6b3d }
   }
 </style>"""
 
@@ -127,6 +129,59 @@ def progression_chart():
     open(os.path.join(OUT, "progression.svg"), "w").write("\n".join(out))
 
 
+def line_chart(fname, title, subtitle, series, xlabel, fmt="{:.0f}"):
+    """series: [(css class, legend name, [(x, y), ...])]"""
+    W, H, L, T, B = 760, 380, 64, 96, 52
+    xs = sorted({x for _, _, pts in series for x, _ in pts})
+    ymax = nice_max(max(y for _, _, pts in series for _, y in pts) * 1.1)
+    px = lambda x: L + (xs.index(x) / max(1, len(xs) - 1)) * (W - L - 40)
+    py = lambda y: T + (H - T - B) * (1 - y / ymax)
+    out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" role="img" aria-labelledby="t">',
+           STYLE, f'<title id="t">{escape(title)}</title>', f'<rect width="{W}" height="{H}" class="bg"/>',
+           text(24, 32, title, size=18, weight=700), text(24, 54, subtitle, "ink2", 13)]
+    out += legend(24, 80, [(k, n) for k, n, _ in series])
+    for k in range(5):
+        v = ymax * k / 4
+        out.append(f'<line x1="{L}" x2="{W - 24}" y1="{py(v):.1f}" y2="{py(v):.1f}" class="grid" stroke-width="1"/>')
+        out.append(text(L - 8, py(v) + 4, fmt.format(v), "ink2", 11, "end"))
+    for x in xs:
+        out.append(text(px(x), H - B + 20, f"{x:g}", "ink2", 12, "middle"))
+    out.append(text(W - 24, H - 10, xlabel, "ink2", 12, "end"))
+    for cls, name, pts in series:
+        d = " ".join(f"{px(x):.1f},{py(y):.1f}" for x, y in pts)
+        out.append(f'<polyline points="{d}" fill="none" stroke-width="2.5" class="{cls}-line"/>')
+        for x, y in pts:
+            out.append(f'<circle cx="{px(x):.1f}" cy="{py(y):.1f}" r="5" class="{cls}"><title>{escape(name)}, {x:g}: {fmt.format(y)}</title></circle>')
+    out.append("</svg>")
+    open(os.path.join(OUT, fname), "w").write("\n".join(out))
+
+
+def serving_charts():
+    f = os.path.join(ROOT, "serving.json")
+    if not os.path.exists(f):
+        return
+    d = json.load(open(f))
+    mixed = [r for r in d["runs"] if r["workload"] == "mixed"]
+    pts = lambda mode, key: [(r["result"]["rate_rps"], r["result"][key]) for r in mixed if r["mode"] == mode]
+    modes = [("glassbox", "continuous batching"), ("transformers", "one at a time")]
+    line_chart("serving-ttft.svg", "Time to first token, median", "Seconds, lower is better. 48 chat-sized requests, Poisson arrivals, 135M shapes Q8_0.",
+               [(c, m, pts(m, "ttft_p50_s")) for c, m in modes], "requests per second", "{:.1f}")
+    line_chart("serving-throughput.svg", "Throughput under load", "Generated tokens per second, higher is better. Same workload.",
+               [(c, m, pts(m, "throughput_tok_s")) for c, m in modes], "requests per second")
+
+
+def spec_chart():
+    f = os.path.join(ROOT, "speculative.json")
+    if not os.path.exists(f):
+        return
+    d = json.load(open(f))
+    pairs = list(dict.fromkeys(r["pair"] for r in d["runs"]))
+    classes = ["glassbox", "llamacpp", "transformers", "mark"]
+    line_chart("speculative.svg", "Speculative decoding: speedup over the target alone", "Greedy, identical output. 1.0 means no gain; below 1 the drafting costs more than it saves.",
+               [(classes[i % 4], p, [(r["k"], r["speedup"]) for r in d["runs"] if r["pair"] == p]) for i, p in enumerate(pairs)],
+               "tokens drafted per round", "{:.2f}")
+
+
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
     rows = load_single()
@@ -135,5 +190,7 @@ if __name__ == "__main__":
         single_chart(rows, 1, "Decode speed, one stream (tg128)", f"Tokens per second, higher is better. {cpu}. Same GGUF weights for Glassbox and llama.cpp.", "single-decode.svg")
         single_chart(rows, 0, "Prompt processing, one stream (pp512)", f"Tokens per second, higher is better. {cpu}.", "single-prefill.svg")
     progression_chart()
+    serving_charts()
+    spec_chart()
     for name in sorted(os.listdir(OUT)):
         print(os.path.join("bench/results/charts", name))

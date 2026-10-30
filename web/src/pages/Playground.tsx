@@ -96,14 +96,35 @@ export function Playground() {
           <h2 id="views-title" className="play__h2">
             Inside the model
           </h2>
-          <div className="tabs" role="tablist" aria-label="Views">
+          <div
+            className="tabs"
+            role="tablist"
+            aria-label="Views"
+            onKeyDown={(e) => {
+              const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0
+              if (!step) return
+              const next = VIEWS[(VIEWS.indexOf(view) + step + VIEWS.length) % VIEWS.length]
+              setView(next)
+              document.getElementById(`tab-${next}`)?.focus()
+            }}
+          >
             {VIEWS.map((v) => (
-              <button key={v} type="button" role="tab" aria-selected={v === view} className="tab" onClick={() => setView(v)}>
+              <button
+                key={v}
+                id={`tab-${v}`}
+                type="button"
+                role="tab"
+                aria-selected={v === view}
+                aria-controls="view-panel"
+                tabIndex={v === view ? 0 : -1}
+                className="tab"
+                onClick={() => setView(v)}
+              >
                 {v}
               </button>
             ))}
           </div>
-          <div className="play__panel" role="tabpanel" aria-label={view}>
+          <div className="play__panel" id="view-panel" role="tabpanel" aria-labelledby={`tab-${view}`}>
             {(view === 'Layers' || view === 'Attention') &&
               (inspected && chosen ? (
                 view === 'Layers' ? (

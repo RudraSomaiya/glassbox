@@ -548,7 +548,8 @@ pub fn matmul(out: &mut [f32], x: &[f32], n: usize, m: &Matrix) {
             let t1 = (t0 + TOKEN_TILE).min(n);
             let mut r = r0;
             while r < r1 {
-                // 2x4 tiles while 4 tokens remain, 4x1 for single tokens (decode).
+                // 2x4 tiles while 4 tokens remain, 4x2 for pairs (small batches,
+                // speculative verification), 4x1 for single tokens (decode).
                 let rr = if r + 4 <= r1 { 4 } else { 1 };
                 prefetch_rows(m, r + 2 * rr, rr);
                 let mut t = t0;
@@ -562,6 +563,14 @@ pub fn matmul(out: &mut [f32], x: &[f32], n: usize, m: &Matrix) {
                             write(r, t, &[&tile::<1, 4>(m, r, x, &xq, t, simd)[0]]);
                         }
                         t += 4;
+                    } else if t + 2 <= t1 {
+                        if rr == 4 {
+                            let v = tile::<4, 2>(m, r, x, &xq, t, simd);
+                            write(r, t, &[&v[0], &v[1], &v[2], &v[3]]);
+                        } else {
+                            write(r, t, &[&tile::<1, 2>(m, r, x, &xq, t, simd)[0]]);
+                        }
+                        t += 2;
                     } else {
                         if rr == 4 {
                             let v = tile::<4, 1>(m, r, x, &xq, t, simd);
@@ -618,7 +627,7 @@ mod tests {
     #[test]
     fn matmul_matches_naive() {
         let mut rng = Rng(42);
-        for (rows, cols, n) in [(1, 32, 1), (17, 64, 3), (33, 96, 9), (50, 160, 17)] {
+        for (rows, cols, n) in [(1, 32, 1), (8, 64, 2), (17, 64, 3), (33, 96, 9), (50, 160, 17)] {
             let w = rng.vec(rows * cols);
             let x = rng.vec(n * cols);
             for dt in [DType::F32, DType::Q8_0, DType::Q4_0] {

@@ -3,8 +3,7 @@
 .strip-wrap {
   position: relative;
   --row: 80px;
-  --band: 20px;
-  --hole: 6px; /* sprocket centre, from the strip's outer edge */
+  --band: 22px;
 }
 
 .strip {
@@ -14,16 +13,11 @@
   padding: 0 10px;
   min-height: var(--row);
   background-color: var(--film);
-  background-image:
-    radial-gradient(circle at 50% 50%, var(--sprocket) 0 3.6px, transparent 4.2px),
-    radial-gradient(circle at 50% 50%, var(--sprocket) 0 3.6px, transparent 4.2px);
-  background-size:
-    16px var(--row),
-    16px var(--row);
-  background-position:
-    0 calc(var(--hole) - var(--row) / 2),
-    0 calc(var(--row) - var(--hole) - var(--row) / 2);
-  background-repeat: repeat;
+  /* Sprocket holes: a punched tile, one hole near each edge of every row. */
+  -webkit-mask: var(--sprockets);
+  mask: var(--sprockets);
+  --sprockets: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='80'%3E%3Cpath fill-rule='evenodd' d='M0 0h16v80H0z M8 1.2a3.8 3.8 0 1 0 0.01 0z M8 71.2a3.8 3.8 0 1 0 0.01 0z'/%3E%3C/svg%3E")
+    0 0 / 16px var(--row) repeat;
 }
 
 .strip__cell {
@@ -36,7 +30,8 @@
   position: relative;
   display: inline-flex;
   align-items: center;
-  min-width: 18px;
+  min-width: 24px;
+  justify-content: center;
   height: 100%;
   padding: 0 7px;
   border: 0;
@@ -57,10 +52,12 @@
 .frame:hover,
 .frame[aria-expanded='true'] {
   transform: translateY(-2px);
-  box-shadow: 0 0 0 2px var(--mark);
+  outline: 2px solid var(--mark);
+  outline-offset: 1px;
 }
 .frame--selected {
-  box-shadow: 0 0 0 3px var(--mark);
+  outline: 3px solid var(--mark);
+  outline-offset: 1px;
 }
 .frame:focus-visible {
   outline-offset: 2px;
@@ -70,7 +67,7 @@
   content: attr(data-n);
   position: absolute;
   left: 2px;
-  bottom: -14px;
+  bottom: -13px;
   font-size: 12px;
   line-height: 12px;
   font-weight: 600;
@@ -125,7 +122,8 @@
   padding: 16px;
   background: var(--surface);
   color: var(--ink);
-  box-shadow:
+  /* It floats over the strip, so it casts a shadow. */
+  box-shadow: /* taste-skill-ignore: a floating panel */
     0 18px 40px -12px rgb(0 0 0 / 0.35),
     0 2px 6px rgb(0 0 0 / 0.12);
   animation: loupe-in var(--standard) var(--ease) both;
@@ -148,9 +146,9 @@
   place-items: center;
   background: var(--film);
   color: var(--film-ink);
-  box-shadow:
-    inset 0 0 0 6px var(--ink),
-    inset 0 0 0 9px var(--film-edge);
+  border: 6px solid var(--ink);
+  outline: 3px solid var(--film-edge);
+  outline-offset: -9px;
   overflow: hidden;
   font-size: 1.6rem;
   font-weight: 700;
@@ -196,7 +194,8 @@
   cursor: default;
 }
 .wedge__row:not(:disabled):hover {
-  box-shadow: inset 0 0 0 2px var(--mark);
+  outline: 2px solid var(--mark);
+  outline-offset: -2px;
 }
 .wedge__row--chosen {
   font-weight: 700;
@@ -230,7 +229,7 @@
 @media (max-width: 640px) {
   .strip-wrap {
     --row: 72px;
-    --band: 18px;
+    --band: 22px;
   }
   .frame {
     font-size: 1rem;

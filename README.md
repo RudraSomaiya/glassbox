@@ -40,7 +40,17 @@ How it got fast, decode on the 135M shapes:
 
 ![Kernel progression](bench/results/charts/progression.svg)
 
-SERVING_AND_SPEC_RESULTS
+Serving, 48 chat-sized requests (prompts 32-320 tokens, replies 32-256) arriving as a Poisson process, 135M shapes at Q8_0:
+
+| arrivals | continuous batching: tokens/s, TTFT p50 / p99 | one request at a time: tokens/s, TTFT p50 / p99 |
+|---|---|---|
+| 0.5 req/s | 66, 0.7 s / 1.9 s | 66, 3.1 s / 10.8 s |
+| 1 req/s | 98, 1.6 s / 8.5 s | 79, 20.7 s / 36.3 s |
+| 2 req/s | 109, 3.8 s / 24.0 s | 82, 31.5 s / 57.8 s |
+
+Above about 1 request a second the engine is saturated: batched decode is limited by the same matrix kernel that makes prefill slow. With a shared 384-token system prompt at 2 requests a second, the prefix cache cuts median time to first token from 26.3 s to 0.23 s and triples throughput (23 to 71 tokens/s).
+
+SPEC_RESULTS
 
 In headless Chromium on the same VM, single-threaded WebAssembly runs the 135M shapes at Q8_0 at BROWSER_TOKS tokens per second.
 

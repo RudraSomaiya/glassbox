@@ -415,7 +415,7 @@ fn spec(args: &[String]) {
             n += glassbox_core::greedy(target, p, max).len();
         }
         let base = n as f64 / t.elapsed().as_secs_f64();
-        for k in [1, 2, 4, 6, 8] {
+        for k in [1, 2, 4, 8] {
             let t = Instant::now();
             let (mut n, mut drafted, mut accepted, mut passes) = (0, 0, 0, 0);
             for p in prompts.iter() {
@@ -450,7 +450,7 @@ fn spec(args: &[String]) {
     write(
         arg(args, "--out"),
         &json!({"max_tokens": max, "decoding": "greedy", "runs": out, "threads": pool::threads(),
-        "note": "stand-in random weights: acceptance between different random models is near zero by construction; the Q4_0 -> Q8_0 pair is the same model at two precisions",
+        "note": "random-weight stand-ins: acceptance between different random models is near zero by construction, and random logits are so nearly tied that even 4-bit noise flips the argmax; the trained tiny stand-in (6 layers) has realistic distributions but is too small for drafting to save time",
         "meta": meta()}),
     );
 }

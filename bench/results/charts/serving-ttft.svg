@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 380" width="760" height="380" role="img" aria-labelledby="t">
+<style>
+  .bg { fill: #fbfcfb } .ink { fill: #121413 } .ink2 { fill: #444a46 } .grid { stroke: #dfe3df }
+  .glassbox { fill: #c8692e } .llamacpp { fill: #2f72a8 } .transformers { fill: #6f8a2a } .mark { fill: #c92a22 }
+  .glassbox-line { stroke: #c8692e } .llamacpp-line { stroke: #2f72a8 } .transformers-line { stroke: #6f8a2a } .mark-line { stroke: #c92a22 }
+  text { font-family: Archivo, system-ui, sans-serif; font-variant-numeric: tabular-nums }
+  @media (prefers-color-scheme: dark) {
+    .bg { fill: #1c1814 } .ink { fill: #efe7da } .ink2 { fill: #b3a899 } .grid { stroke: #3a332c }
+    .llamacpp { fill: #3f86c4 } .transformers { fill: #7f9a35 } .mark { fill: #ff6b3d }
+    .llamacpp-line { stroke: #3f86c4 } .transformers-line { stroke: #7f9a35 } .mark-line { stroke: #ff6b3d }
+  }
+</style>
+<title id="t">Time to first token, median</title>
+<rect width="760" height="380" class="bg"/>
+<text x="24.0" y="32.0" class="ink" font-size="18" text-anchor="start" font-weight="700">Time to first token, median</text>
+<text x="24.0" y="54.0" class="ink2" font-size="13" text-anchor="start" font-weight="400">Seconds, lower is better. 48 chat-sized requests, Poisson arrivals, 135M shapes Q8_0.</text>
+<rect x="24" y="70" width="12" height="12" rx="2" class="glassbox"/>
+<text x="42.0" y="80.0" class="ink" font-size="13" text-anchor="start" font-weight="400">continuous batching</text>
+<rect x="196.5" y="70" width="12" height="12" rx="2" class="transformers"/>
+<text x="214.5" y="80.0" class="ink" font-size="13" text-anchor="start" font-weight="400">one at a time</text>
+<line x1="64" x2="736" y1="328.0" y2="328.0" class="grid" stroke-width="1"/>
+<text x="56.0" y="332.0" class="ink2" font-size="11" text-anchor="end" font-weight="400">0.0</text>
+<line x1="64" x2="736" y1="270.0" y2="270.0" class="grid" stroke-width="1"/>
+<text x="56.0" y="274.0" class="ink2" font-size="11" text-anchor="end" font-weight="400">25.0</text>
+<line x1="64" x2="736" y1="212.0" y2="212.0" class="grid" stroke-width="1"/>
+<text x="56.0" y="216.0" class="ink2" font-size="11" text-anchor="end" font-weight="400">50.0</text>
+<line x1="64" x2="736" y1="154.0" y2="154.0" class="grid" stroke-width="1"/>
+<text x="56.0" y="158.0" class="ink2" font-size="11" text-anchor="end" font-weight="400">75.0</text>
+<line x1="64" x2="736" y1="96.0" y2="96.0" class="grid" stroke-width="1"/>
+<text x="56.0" y="100.0" class="ink2" font-size="11" text-anchor="end" font-weight="400">100.0</text>
+<text x="64.0" y="348.0" class="ink2" font-size="12" text-anchor="middle" font-weight="400">0.5</text>
+<text x="282.7" y="348.0" class="ink2" font-size="12" text-anchor="middle" font-weight="400">1</text>
+<text x="501.3" y="348.0" class="ink2" font-size="12" text-anchor="middle" font-weight="400">2</text>
+<text x="720.0" y="348.0" class="ink2" font-size="12" text-anchor="middle" font-weight="400">4</text>
+<text x="736.0" y="370.0" class="ink2" font-size="12" text-anchor="end" font-weight="400">requests per second</text>
+<polyline points="64.0,326.3 282.7,324.2 501.3,319.1 720.0,308.3" fill="none" stroke-width="2.5" class="glassbox-line"/>
+<circle cx="64.0" cy="326.3" r="5" class="glassbox"><title>continuous batching, 0.5: 0.7</title></circle>
+<circle cx="282.7" cy="324.2" r="5" class="glassbox"><title>continuous batching, 1: 1.6</title></circle>
+<circle cx="501.3" cy="319.1" r="5" class="glassbox"><title>continuous batching, 2: 3.8</title></circle>
+<circle cx="720.0" cy="308.3" r="5" class="glassbox"><title>continuous batching, 4: 8.5</title></circle>
+<polyline points="64.0,320.9 282.7,280.1 501.3,255.0 720.0,241.8" fill="none" stroke-width="2.5" class="transformers-line"/>
+<circle cx="64.0" cy="320.9" r="5" class="transformers"><title>one at a time, 0.5: 3.1</title></circle>
+<circle cx="282.7" cy="280.1" r="5" class="transformers"><title>one at a time, 1: 20.7</title></circle>
+<circle cx="501.3" cy="255.0" r="5" class="transformers"><title>one at a time, 2: 31.5</title></circle>
+<circle cx="720.0" cy="241.8" r="5" class="transformers"><title>one at a time, 4: 37.2</title></circle>
+</svg>

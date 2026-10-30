@@ -17,10 +17,10 @@ Light theme is the light table: luminous cool white, black ink, the C-41 negativ
 | `--ink-2` | `#444a46` | `#b3a899` | secondary notes only |
 | `--film` | `#c8692e` | `#8a4419` | the film base: strips, bars, lens |
 | `--film-ink` | `#1d0d03` | `#fbeadb` | text on clear frames |
-| `--film-dense` | `rgb(29 10 2)` | `rgb(8 3 0)` | D-max, mixed into frames by `1 - p` |
+| `--film-dense` | `rgb(29 10 2)` | `rgb(8 3 0)` | D-max, mixed into frames by density |
 | `--mark` | `#c92a22` | `#ff6b3d` | selection, focus, forks, the action on hover |
 
-Probability is never shown by hue. It is density: `color-mix(film, film-dense, (1 - p) * 88%)`, with the text flipping to light below p = 0.4.
+Probability is never shown by hue. It is **optical density**, as on real film: `D = log10(1/p)`, scaled so D = 3 (p = 0.001) is fully dense, applied as `color-mix(film, film-dense, D/3 * 90%)` (`density()` in `views/FilmStrip.tsx`). Text flips to light above D/3 = 0.3. A log scale is what separates 10% from 1%; a linear one paints every unlikely token the same black.
 
 ## Type
 
@@ -39,9 +39,10 @@ Edge print (frame numbers in the sprocket band) uses width 70 at 12px, numerals 
 ## Space and shape
 
 - One outer gutter, `clamp(16px, 3vw, 40px)`, both sides at every width.
-- Strip rows are a fixed `--row` (72px desktop, 64px phone) with a `--band` of sprockets above and below, so the sprocket tile lines up with every wrapped line.
+- Strip rows are a fixed `--row` (80px desktop, 72px phone) with a `--band` of sprockets above and below, so the sprocket tile lines up with every wrapped line.
 - Square corners on buttons and fields; 3px on frames (film frames have slightly rounded corners); the lens is the only circle.
-- Surfaces separate by a step in tone. Only things that float (the loupe) cast a shadow.
+- Sprocket holes are punched with an SVG mask, so the page ground shows through them in both themes.
+- Surfaces separate by a step in tone. Only the loupe, which floats, casts a shadow. Selection, hover and focus are drawn as outlines in grease-pencil red, never as shadows or hairline rules.
 
 ## Motion
 
