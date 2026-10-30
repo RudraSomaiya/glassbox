@@ -1,0 +1,16 @@
+[project]
+name = "glassbox-reference"
+version = "0.1.0"
+description = "Reference fixtures for Glassbox from Hugging Face transformers"
+requires-python = ">=3.11"
+dependencies = [
+    "torch>=2.4",
+    "transformers>=4.46",
+    "tokenizers>=0.20",
+    "safetensors>=0.4",
+    "numpy",
+    "gguf",
+]
+
+[tool.uv]
+package = false
