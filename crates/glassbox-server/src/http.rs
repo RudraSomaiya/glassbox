@@ -40,6 +40,8 @@ pub struct AppState {
     pub snapshot: Arc<Mutex<Snapshot>>,
     pub vocab: Arc<Vec<Vec<u8>>>,
     pub trie: Arc<Trie>,
+    /// Longest prompt plus reply the model supports.
+    pub max_context: usize,
 }
 
 /// The engine thread: waits for work when idle, otherwise steps continuously.
@@ -154,30 +156,56 @@ struct Detok {
 }
 
 impl Detok {
+    /// Text that is complete so far; an unfinished character waits for the next token.
     fn push(&mut self, bytes: &[u8]) -> String {
         self.pending.extend_from_slice(bytes);
-        match std::str::from_utf8(&self.pending) {
-            Ok(s) => {
-                let s = s.to_string();
-                self.pending.clear();
-                s
-            }
-            Err(e) if e.error_len().is_none() => {
-                let ok = e.valid_up_to();
-                let s = String::from_utf8_lossy(&self.pending[..ok]).into_owned();
-                self.pending.drain(..ok);
-                s
-            }
-            Err(_) => {
-                let s = String::from_utf8_lossy(&self.pending).into_owned();
-                self.pending.clear();
-                s
+        let mut out = String::new();
+        loop {
+            match std::str::from_utf8(&self.pending) {
+                Ok(s) => {
+                    out.push_str(s);
+                    self.pending.clear();
+                    return out;
+                }
+                // Valid so far, the last character is unfinished.
+                Err(e) if e.error_len().is_none() => {
+                    let ok = e.valid_up_to();
+                    out.push_str(&String::from_utf8_lossy(&self.pending[..ok]));
+                    self.pending.drain(..ok);
+                    return out;
+                }
+                // An invalid sequence: replace just it, keep going.
+                Err(e) => {
+                    let bad = e.valid_up_to() + e.error_len().unwrap();
+                    out.push_str(&String::from_utf8_lossy(&self.pending[..bad]));
+                    self.pending.drain(..bad);
+                }
             }
         }
+    }
+
+    /// Whatever is left when the stream ends.
+    fn flush(&mut self) -> String {
+        let s = String::from_utf8_lossy(&self.pending).into_owned();
+        self.pending.clear();
+        s
     }
 }
 
 async fn generate(st: AppState, prompt: Vec<u32>, p: GenParams, chat: bool) -> Response {
+    if p.max_tokens == Some(0) {
+        return error(StatusCode::BAD_REQUEST, "max_tokens must be at least 1");
+    }
+    if prompt.len() >= st.max_context {
+        return error(
+            StatusCode::BAD_REQUEST,
+            format!(
+                "prompt is {} tokens; this model's context is {}",
+                prompt.len(),
+                st.max_context
+            ),
+        );
+    }
     let constraint = match p.response_format.as_ref().filter(|f| f["type"] == "json_schema") {
         None => None,
         Some(f) => match JsonConstraint::new(&f["json_schema"]["schema"], st.trie.clone()) {
@@ -217,7 +245,7 @@ async fn generate(st: AppState, prompt: Vec<u32>, p: GenParams, chat: bool) -> R
         let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx).map(move |ev| {
             let (delta, finish) = match ev {
                 Event::Token(t) => (detok.push(&vocab[t as usize]), Value::Null),
-                Event::Done { reason, .. } => (String::new(), json!(reason_str(reason))),
+                Event::Done { reason, .. } => (detok.flush(), json!(reason_str(reason))),
             };
             let choice = if chat {
                 json!({"index": 0, "delta": {"content": delta}, "finish_reason": finish})
@@ -258,6 +286,22 @@ async fn generate(st: AppState, prompt: Vec<u32>, p: GenParams, chat: bool) -> R
         "usage": {"prompt_tokens": usage.0, "completion_tokens": usage.1, "total_tokens": usage.0 + usage.1},
     }))
     .into_response()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Detok;
+
+    #[test]
+    fn detok_recovers_after_a_bad_byte() {
+        let mut d = Detok { pending: Vec::new() };
+        let mut out = String::new();
+        for t in [&[0xE2u8][..], &[0xF0, 0x9F], &[0x98, 0x80]] {
+            out += &d.push(t);
+        }
+        out += &d.flush();
+        assert_eq!(out, "\u{FFFD}😀");
+    }
 }
 
 fn reason_str(r: Finish) -> &'static str {

@@ -7,8 +7,9 @@
 //! and park only when the engine goes idle.
 
 use std::cell::UnsafeCell;
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering::*};
-use std::sync::{Condvar, Mutex, OnceLock};
+use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering::*};
+use std::sync::{Condvar, Mutex, OnceLock, TryLockError};
 use std::time::{Duration, Instant};
 
 const SPIN: Duration = Duration::from_millis(2);
@@ -20,8 +21,13 @@ struct Shared {
     job: UnsafeCell<Option<Job>>,
     tasks: AtomicUsize,
     next: AtomicUsize,
-    /// Workers allowed to join a job (the caller is one more).
+    /// Workers allowed to join new jobs (the caller is one more).
     helpers: AtomicUsize,
+    /// Workers taking part in the current job: fixed when it is posted, so
+    /// `set_threads` from another thread can't change who decrements `pending`.
+    participants: AtomicUsize,
+    /// A task panicked on a worker; the caller re-raises it.
+    panicked: AtomicBool,
     pending: AtomicUsize,
     sleepers: AtomicUsize,
     lock: Mutex<()>,
@@ -55,6 +61,8 @@ fn pool() -> &'static Pool {
             tasks: AtomicUsize::new(0),
             next: AtomicUsize::new(0),
             helpers: AtomicUsize::new(n - 1),
+            participants: AtomicUsize::new(0),
+            panicked: AtomicBool::new(false),
             pending: AtomicUsize::new(0),
             sleepers: AtomicUsize::new(0),
             lock: Mutex::new(()),
@@ -117,14 +125,18 @@ fn worker(s: &'static Shared, id: usize) {
             drop(guard);
             s.sleepers.fetch_sub(1, SeqCst);
         }
-        if id >= s.helpers.load(Relaxed) {
+        if id >= s.participants.load(Relaxed) {
             continue;
         }
         // SAFETY: see `unsafe impl Sync for Shared`: the job is set and stays
         // alive until this worker decrements `pending`.
         let job = unsafe { (*s.job.get()).expect("job posted") };
+        // A panicking task must still count as finished, or the caller would
+        // spin forever; the caller re-raises it.
         // SAFETY: the pointer refers to the caller's closure, alive as above.
-        run(s, unsafe { &*job });
+        if catch_unwind(AssertUnwindSafe(|| run(s, unsafe { &*job }))).is_err() {
+            s.panicked.store(true, Relaxed);
+        }
         s.pending.fetch_sub(1, AcqRel);
     }
 }
@@ -135,7 +147,12 @@ pub fn par_for(n: usize, f: impl Fn(usize) + Sync) {
     let s = p.shared;
     let helpers = s.helpers.load(Relaxed);
     let guard = if n > 1 && helpers > 0 {
-        s.busy.try_lock().ok()
+        match s.busy.try_lock() {
+            Ok(g) => Some(g),
+            // A previous job panicked; the slot was cleared before unwinding.
+            Err(TryLockError::Poisoned(e)) => Some(e.into_inner()),
+            Err(TryLockError::WouldBlock) => None,
+        }
     } else {
         None
     };
@@ -145,8 +162,9 @@ pub fn par_for(n: usize, f: impl Fn(usize) + Sync) {
     };
     let f: &(dyn Fn(usize) + Sync) = &f;
     // SAFETY: we erase the closure's lifetime to share it with the workers.
-    // It outlives every use: we spin until `pending` reaches zero below,
-    // and clear the slot before returning.
+    // It outlives every use: we spin until `pending` reaches zero below, even
+    // when a task panics (both sides catch it), and clear the slot before
+    // returning or re-raising.
     let job: Job = unsafe { std::mem::transmute::<&(dyn Fn(usize) + Sync), &'static (dyn Fn(usize) + Sync)>(f) };
     // SAFETY: we hold `busy`, and no worker reads the slot until the
     // generation bump below publishes it.
@@ -154,22 +172,42 @@ pub fn par_for(n: usize, f: impl Fn(usize) + Sync) {
     s.tasks.store(n, Relaxed);
     s.next.store(0, Relaxed);
     s.pending.store(helpers, Relaxed);
+    s.participants.store(helpers, Relaxed);
     s.generation.fetch_add(1, SeqCst);
     if s.sleepers.load(SeqCst) > 0 {
         let _l = s.lock.lock().unwrap();
         s.wake.notify_all();
     }
-    run(s, f);
+    let mine = catch_unwind(AssertUnwindSafe(|| run(s, f)));
     while s.pending.load(Acquire) != 0 {
         std::hint::spin_loop();
     }
     // SAFETY: every helper has finished with the job.
     unsafe { *s.job.get() = None };
+    if let Err(e) = mine {
+        resume_unwind(e);
+    }
+    if s.panicked.swap(false, Relaxed) {
+        panic!("a parallel task panicked");
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn panics_propagate_and_the_pool_survives() {
+        for bad in [0, 63] {
+            let r = std::panic::catch_unwind(|| par_for(64, |i| assert!(i != bad)));
+            assert!(r.is_err());
+        }
+        let hits = AtomicUsize::new(0);
+        par_for(100, |_| {
+            hits.fetch_add(1, Relaxed);
+        });
+        assert_eq!(hits.load(Relaxed), 100);
+    }
 
     #[test]
     fn every_index_runs_once() {

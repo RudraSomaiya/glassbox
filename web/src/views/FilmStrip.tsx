@@ -5,6 +5,13 @@ import './filmstrip.css'
 /** Visible form of a token: whitespace drawn, not swallowed. */
 export function Glyphs({ text }: { text: string }) {
   if (text === '') return <span className="glyph-empty" aria-hidden />
+  // A token that is only spaces would be invisible: draw the space.
+  if (/^ +$/.test(text))
+    return (
+      <svg className="glyph-sp" viewBox="0 0 14 8" aria-hidden>
+        <path d="M1 2v5h12V2" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      </svg>
+    )
   const parts = text.split(/(\n)/)
   return (
     <>
@@ -154,7 +161,7 @@ function Loupe({
       aria-label={`What else could have come at position ${token.index}`}
       onMouseLeave={() => !pinned && onClose()}
     >
-      <div className="loupe__lens" aria-hidden>
+      <div className="loupe__lens" aria-hidden style={{ '--len': Math.max(3, [...token.text].length) } as React.CSSProperties}>
         <span>
           <Glyphs text={token.text} />
         </span>
@@ -188,6 +195,11 @@ function Loupe({
         </ol>
         {onFork && <p className="loupe__hint">Pick another token to fork the story from here.</p>}
       </div>
+      <button type="button" className="loupe__close" onClick={onClose} aria-label="Close the loupe">
+        <svg viewBox="0 0 12 12" width="14" height="14" aria-hidden>
+          <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.8" />
+        </svg>
+      </button>
     </aside>
   )
 }

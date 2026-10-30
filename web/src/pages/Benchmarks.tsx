@@ -263,15 +263,17 @@ function Serving() {
 }
 
 function Spec() {
-  const d = byName('speculative.json')
-  if (!d) return null
+  const random = byName('/speculative.json')
+  const trained = byName('/speculative-trained.json')
+  if (!random && !trained) return null
+  const d = { runs: [...(random?.runs ?? []), ...(trained?.runs ?? [])] }
   const pairs = [...new Set(d.runs.map((r: Json) => r.pair))] as string[]
-  const keys = ['glassbox', 'llamacpp', 'transformers', 'mark']
+  const keys = ['glassbox', 'llamacpp', 'transformers', 'mark', 'base', 'glassbox']
   return (
     <>
       <LineChart
         title="Speculative decoding: speedup by draft length"
-        note="Speedup over the target model alone (greedy, identical output). 1 means no gain."
+        note="Decode speedup over the target alone (greedy, identical output). Below 1, drafting costs more than it saves: on stand-in weights the drafters rarely agree with the targets, and the trained stand-in is too small for a drafter to be much cheaper."
         y="tokens drafted per round"
         unit="×"
         series={pairs.map((p, i) => ({ key: keys[i % keys.length], name: p, pts: d.runs.filter((r: Json) => r.pair === p).map((r: Json) => [r.k, r.speedup]) }))}

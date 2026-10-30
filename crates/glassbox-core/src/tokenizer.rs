@@ -24,6 +24,8 @@ pub struct Tokenizer {
     merges: HashMap<(u32, u32), (u32, u32)>,
     added: Vec<(String, u32)>,
     special: Vec<bool>,
+    /// Added tokens are stored as raw text, not byte-level mapped.
+    raw: Vec<bool>,
     steps: Vec<PreStep>,
     byte_to_char: [char; 256],
     char_to_byte: HashMap<char, u8>,
@@ -83,10 +85,14 @@ impl Tokenizer {
             .map(|(k, v)| (k.clone(), v.as_u64().unwrap() as u32))
             .collect();
         let mut added = Vec::new();
+        let mut special_ids = Vec::new();
         for t in j["added_tokens"].as_array().into_iter().flatten() {
             let content = t["content"].as_str().unwrap().to_string();
             let id = t["id"].as_u64().unwrap() as u32;
             vocab.insert(content.clone(), id);
+            if t["special"] == true {
+                special_ids.push(id);
+            }
             added.push((content, id));
         }
         // Longest first, so the scan in `split_added` prefers the longest match.
@@ -98,8 +104,12 @@ impl Tokenizer {
             tokens[v as usize] = k.clone();
         }
         let mut special = vec![false; size];
+        for &id in &special_ids {
+            special[id as usize] = true;
+        }
+        let mut raw = vec![false; size];
         for (_, id) in &added {
-            special[*id as usize] = true;
+            raw[*id as usize] = true;
         }
 
         let mut merges = HashMap::new();
@@ -159,6 +169,7 @@ impl Tokenizer {
             merges,
             added,
             special,
+            raw,
             steps,
             byte_to_char,
             char_to_byte,
@@ -282,7 +293,7 @@ impl Tokenizer {
     /// so streaming callers join bytes before decoding.
     pub fn token_bytes(&self, id: u32) -> Vec<u8> {
         let s = &self.tokens[id as usize];
-        if self.is_special(id) {
+        if self.raw[id as usize] {
             return s.as_bytes().to_vec();
         }
         s.chars()

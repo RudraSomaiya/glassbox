@@ -345,6 +345,7 @@ fn main() {
                 snapshot,
                 vocab,
                 trie,
+                max_context: model.config.max_position_embeddings,
             };
             let port: u16 = args.num("--port", 8080);
             let rt = tokio::runtime::Runtime::new().expect("tokio runtime");

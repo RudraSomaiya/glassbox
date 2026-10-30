@@ -11,7 +11,7 @@ const USAGE: &str = "usage:
   glassbox-bench progression --model DIR [--out FILE]
   glassbox-bench quality     --model DIR --file TEXT [--ctx 512] [--chunks 100] [--out FILE]
   glassbox-bench serve       --model DIR [--dtype q8_0] [--out FILE]
-  glassbox-bench spec        [--out FILE]   (needs models/standin-{135M,360M,1.7B} GGUFs)
+  glassbox-bench spec        [--set random|trained] [--out FILE]   (needs the stand-ins under models/)
   glassbox-bench kernels";
 
 fn arg<'a>(args: &'a [String], name: &str) -> Option<&'a str> {
@@ -393,28 +393,63 @@ fn spec(args: &[String]) {
         .collect();
     let max = 64;
     let mut out = Vec::new();
-    let small = gguf("standin-135M", "q8_0");
-    let mid = gguf("standin-360M", "q8_0");
-    let big = gguf("standin-1.7B", "q8_0");
-    let big4 = gguf("standin-1.7B", "q4_0");
-    let cases: Vec<(&str, &Model, Drafter, &Vec<Vec<u32>>)> = vec![
-        ("135M -> 360M", &mid, Drafter::Model(&small), &qa),
-        ("135M -> 1.7B", &big, Drafter::Model(&small), &qa),
-        ("1.7B Q4_0 -> 1.7B Q8_0", &big, Drafter::Model(&big4), &qa),
+    // Random-weight stand-ins for speed at real shapes, or the trained tiny
+    // stand-in, whose distributions are peaked enough for acceptance to mean something.
+    let trained = arg(args, "--set") == Some("trained");
+    let load_random = || {
         (
+            gguf("standin-135M", "q8_0"),
+            gguf("standin-360M", "q8_0"),
+            gguf("standin-1.7B", "q8_0"),
+            gguf("standin-1.7B", "q4_0"),
+        )
+    };
+    let load_tiny = || {
+        let tiny = Model::load_dir("models/standin-tiny").expect("models/standin-tiny");
+        let mut tiny4 = Model::load_dir("models/standin-tiny").expect("models/standin-tiny");
+        tiny4.quantize(DType::Q4_0);
+        (tiny, tiny4)
+    };
+    let (random, tiny) = if trained {
+        (None, Some(load_tiny()))
+    } else {
+        (Some(load_random()), None)
+    };
+    let mut cases: Vec<(&str, &Model, Drafter, &Vec<Vec<u32>>)> = Vec::new();
+    if let Some((small, mid, big, big4)) = &random {
+        cases.push(("135M -> 360M", mid, Drafter::Model(small), &qa));
+        cases.push(("135M -> 1.7B", big, Drafter::Model(small), &qa));
+        cases.push(("1.7B Q4_0 -> 1.7B Q8_0", big, Drafter::Model(big4), &qa));
+        cases.push((
             "prompt lookup -> 360M (summaries)",
-            &mid,
+            mid,
             Drafter::Lookup { ngram: 3 },
             &docs,
-        ),
-    ];
+        ));
+    }
+    if let Some((tiny, tiny4)) = &tiny {
+        cases.push(("tiny Q4_0 -> tiny f32", tiny, Drafter::Model(tiny4), &qa));
+        cases.push((
+            "prompt lookup -> tiny (summaries)",
+            tiny,
+            Drafter::Lookup { ngram: 3 },
+            &docs,
+        ));
+    }
     for (name, target, drafter, prompts) in cases {
+        // Speedups compare decode time only: prompt reading is the same work
+        // either way (plus a draft-model prefill, counted as overhead below).
+        let t = Instant::now();
+        for p in prompts.iter() {
+            Generator::new(target, p.len() + 1).feed(p, None);
+        }
+        let prefill = t.elapsed().as_secs_f64();
         let t = Instant::now();
         let mut n = 0;
         for p in prompts.iter() {
             n += glassbox_core::greedy(target, p, max).len();
         }
-        let base = n as f64 / t.elapsed().as_secs_f64();
+        let base = n as f64 / (t.elapsed().as_secs_f64() - prefill);
         for k in [1, 2, 4, 8] {
             let t = Instant::now();
             let (mut n, mut drafted, mut accepted, mut passes) = (0, 0, 0, 0);
@@ -433,7 +468,7 @@ fn spec(args: &[String]) {
                 accepted += st.accepted;
                 passes += st.target_passes;
             }
-            let tps = n as f64 / t.elapsed().as_secs_f64();
+            let tps = n as f64 / (t.elapsed().as_secs_f64() - prefill);
             let acc = accepted as f64 / drafted.max(1) as f64;
             eprintln!(
                 "{name:34} k={k}: {tps:6.1} tok/s vs {base:6.1} alone ({:.2}x), acceptance {:.0}%",
@@ -450,7 +485,8 @@ fn spec(args: &[String]) {
     write(
         arg(args, "--out"),
         &json!({"max_tokens": max, "decoding": "greedy", "runs": out, "threads": pool::threads(),
-        "note": "random-weight stand-ins: acceptance between different random models is near zero by construction, and random logits are so nearly tied that even 4-bit noise flips the argmax; the trained tiny stand-in (6 layers) has realistic distributions but is too small for drafting to save time",
+        "note": if trained { "trained tiny stand-in (6 layers, 384 wide): realistic distributions, but tiny" } else { "random-weight stand-ins: acceptance between different random models is near zero by construction, and random logits are so nearly tied that even 4-bit noise flips the argmax" },
+        "timing": "decode only: tokens / (total time - target prefill time)",
         "meta": meta()}),
     );
 }

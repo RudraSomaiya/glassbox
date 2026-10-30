@@ -1,0 +1,112 @@
+{
+  "decoding": "greedy",
+  "max_tokens": 64,
+  "meta": {
+    "commit": "8552792",
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "date": "2026-10-30T15:41:01Z",
+    "logical_cpus": 4,
+    "simd": true
+  },
+  "note": "trained tiny stand-in (6 layers, 384 wide): realistic distributions, but tiny",
+  "runs": [
+    {
+      "acceptance": 0.9384615384615385,
+      "accepted": 122,
+      "baseline_tok_s": 513.1121264063429,
+      "drafted": 130,
+      "k": 1,
+      "pair": "tiny Q4_0 -> tiny f32",
+      "speedup": 0.8793501373718963,
+      "target_passes": 134,
+      "tok_s": 451.2052188426034,
+      "tokens": 256
+    },
+    {
+      "acceptance": 0.9111111111111111,
+      "accepted": 164,
+      "baseline_tok_s": 513.1121264063429,
+      "drafted": 180,
+      "k": 2,
+      "pair": "tiny Q4_0 -> tiny f32",
+      "speedup": 0.927704837293165,
+      "target_passes": 94,
+      "tok_s": 476.01660174094627,
+      "tokens": 256
+    },
+    {
+      "acceptance": 0.8333333333333334,
+      "accepted": 195,
+      "baseline_tok_s": 513.1121264063429,
+      "drafted": 234,
+      "k": 4,
+      "pair": "tiny Q4_0 -> tiny f32",
+      "speedup": 0.872859132705032,
+      "target_passes": 64,
+      "tok_s": 447.87460563547523,
+      "tokens": 256
+    },
+    {
+      "acceptance": 0.7785714285714286,
+      "accepted": 218,
+      "baseline_tok_s": 513.1121264063429,
+      "drafted": 280,
+      "k": 8,
+      "pair": "tiny Q4_0 -> tiny f32",
+      "speedup": 0.7625705314393244,
+      "target_passes": 41,
+      "tok_s": 391.2841869216467,
+      "tokens": 256
+    },
+    {
+      "acceptance": 0.593103448275862,
+      "accepted": 86,
+      "baseline_tok_s": 374.23101374035946,
+      "drafted": 145,
+      "k": 1,
+      "pair": "prompt lookup -> tiny (summaries)",
+      "speedup": 1.1073267366992678,
+      "target_passes": 171,
+      "tok_s": 414.3960072167711,
+      "tokens": 256
+    },
+    {
+      "acceptance": 0.4824561403508772,
+      "accepted": 110,
+      "baseline_tok_s": 374.23101374035946,
+      "drafted": 228,
+      "k": 2,
+      "pair": "prompt lookup -> tiny (summaries)",
+      "speedup": 1.0862690368141572,
+      "target_passes": 147,
+      "tok_s": 406.5155628417259,
+      "tokens": 256
+    },
+    {
+      "acceptance": 0.31451612903225806,
+      "accepted": 117,
+      "baseline_tok_s": 374.23101374035946,
+      "drafted": 372,
+      "k": 4,
+      "pair": "prompt lookup -> tiny (summaries)",
+      "speedup": 0.8990245964812119,
+      "target_passes": 140,
+      "tok_s": 336.44288611868154,
+      "tokens": 256
+    },
+    {
+      "acceptance": 0.20230263157894737,
+      "accepted": 123,
+      "baseline_tok_s": 374.23101374035946,
+      "drafted": 608,
+      "k": 8,
+      "pair": "prompt lookup -> tiny (summaries)",
+      "speedup": 0.6993026817868337,
+      "target_passes": 135,
+      "tok_s": 261.7007515164388,
+      "tokens": 256
+    }
+  ],
+  "threads": 4,
+  "timing": "decode only: tokens / (total time - target prefill time)"
+}

@@ -256,13 +256,22 @@ impl<'m> Scheduler<'m> {
         // Admit while there is room for the sequence's first chunk.
         while self.running.len() < self.config.max_seqs {
             let Some(s) = self.waiting.front() else { break };
-            let need = s.tokens.len().min(self.config.token_budget).div_ceil(BLOCK) + 1;
+            // A sequence that was preempted waits until its whole context fits
+            // again; otherwise it comes straight back and is preempted again.
+            let need = if s.generated() > 0 {
+                s.tokens.len().div_ceil(BLOCK) + 1
+            } else {
+                s.tokens.len().min(self.config.token_budget).div_ceil(BLOCK) + 1
+            };
             if self.cache.free_blocks() < need && !self.running.is_empty() {
                 break;
             }
             let mut s = self.waiting.pop_front().unwrap();
             let reused = self.cache.add_seq(s.id, &s.tokens);
-            self.metrics.prefix_hit_tokens += reused as u64;
+            if s.generated() == 0 {
+                // Counted once per request, prompt tokens only.
+                self.metrics.prefix_hit_tokens += reused.min(s.prompt_len) as u64;
+            }
             s.computed = reused;
             self.running.push(s);
         }
@@ -362,6 +371,11 @@ impl<'m> Scheduler<'m> {
         let mut done = Vec::new();
         for (j, &i) in wants_for.iter().enumerate() {
             let s = &mut self.running[i];
+            if s.generated() >= s.req.max_tokens {
+                // max_tokens 0: the prompt is read, nothing is written.
+                done.push((i, Finish::Length));
+                continue;
+            }
             let mut row = logits[j * vocab..(j + 1) * vocab].to_vec();
             if let Some(c) = s.req.constraint.as_mut() {
                 c.mask(&mut row);

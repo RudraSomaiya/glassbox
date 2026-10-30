@@ -2,6 +2,7 @@
 <style>
   .bg { fill: #fbfcfb } .ink { fill: #121413 } .ink2 { fill: #444a46 } .grid { stroke: #dfe3df }
   .glassbox { fill: #c8692e } .llamacpp { fill: #2f72a8 } .transformers { fill: #6f8a2a } .mark { fill: #c92a22 }
+  .base { fill: #444a46 } .base-line { stroke: #444a46 }
   .glassbox-line { stroke: #c8692e } .llamacpp-line { stroke: #2f72a8 } .transformers-line { stroke: #6f8a2a } .mark-line { stroke: #c92a22 }
   text { font-family: Archivo, system-ui, sans-serif; font-variant-numeric: tabular-nums }
   @media (prefers-color-scheme: dark) {

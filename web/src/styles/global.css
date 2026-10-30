@@ -222,6 +222,13 @@ button {
     order: 3;
     width: 100%;
     justify-content: space-between;
+    font-size: 0.9375rem;
+    white-space: nowrap;
+  }
+  .bar__links a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
   }
 }
 

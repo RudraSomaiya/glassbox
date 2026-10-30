@@ -40,8 +40,8 @@ enum Node {
 fn compile(schema: &Value) -> Result<Arc<Node>, String> {
     if let Some(e) = schema.get("enum") {
         let opts = e.as_array().ok_or("enum must be an array")?;
-        if opts.is_empty() {
-            return Err("enum is empty".into());
+        if opts.is_empty() || opts.len() > 64 {
+            return Err("enum needs between 1 and 64 values".into());
         }
         return Ok(Arc::new(Node::Lit(Arc::new(
             opts.iter().map(|v| v.to_string().into_bytes()).collect(),
@@ -107,11 +107,14 @@ enum NumPhase {
 enum Frame {
     Value(Arc<Node>),
     Bytes(Arc<[u8]>, usize),
-    /// Inside a string: bytes so far, cap, whether the last byte was a backslash.
+    /// Inside a string: bytes so far, cap, whether the last byte was a
+    /// backslash, and continuation bytes still owed to a UTF-8 character
+    /// (so the cap never cuts one in half).
     Str {
         len: usize,
         max: usize,
         escape: bool,
+        cont: u8,
     },
     Num {
         integer: bool,
@@ -183,8 +186,16 @@ impl State {
                         return true;
                     }
                 }
-                Frame::Str { len, max, escape } => {
-                    if *escape {
+                Frame::Str { len, max, escape, cont } => {
+                    if *cont > 0 {
+                        if b & 0xC0 == 0x80 {
+                            *cont -= 1;
+                            *len += 1;
+                            Step::Took
+                        } else {
+                            Step::No
+                        }
+                    } else if *escape {
                         if b"\"\\/bfnrt".contains(&b) {
                             *escape = false;
                             *len += 1;
@@ -199,6 +210,20 @@ impl State {
                         *escape = true;
                         *len += 1;
                         Step::Took
+                    } else if b >= 0x80 {
+                        let need = match b {
+                            0xC2..=0xDF => 1,
+                            0xE0..=0xEF => 2,
+                            0xF0..=0xF4 => 3,
+                            _ => return false,
+                        };
+                        if *len + (need as usize) < *max {
+                            *cont = need;
+                            *len += 1;
+                            Step::Took
+                        } else {
+                            Step::No
+                        }
                     } else if b >= 0x20 && b != b'\\' && *len < *max {
                         *len += 1;
                         Step::Took
@@ -311,6 +336,7 @@ impl State {
                     len: 0,
                     max: *max,
                     escape: false,
+                    cont: 0,
                 });
                 self.0.push(Frame::Bytes(Arc::from(&b"\""[..]), 0));
             }
@@ -336,7 +362,7 @@ impl State {
 
     /// In a string body with room to spare: any "plain" token is fine.
     fn plain_string(&self, room: usize) -> bool {
-        matches!(self.0.last(), Some(Frame::Str { len, max, escape: false }) if len + room <= *max)
+        matches!(self.0.last(), Some(Frame::Str { len, max, escape: false, cont: 0 }) if len + room <= *max)
     }
 }
 
@@ -383,7 +409,9 @@ impl Trie {
                 };
             }
             ends[n].push(id as u32);
-            if bytes.iter().all(|&b| b >= 0x20 && b != b'"' && b != b'\\') {
+            // Plain: complete UTF-8 with nothing that needs escaping. Tokens
+            // that split a character are checked byte by byte instead.
+            if std::str::from_utf8(bytes).is_ok() && bytes.iter().all(|&b| b >= 0x20 && b != b'"' && b != b'\\') {
                 plain.push(id as u32);
                 longest_plain = longest_plain.max(bytes.len());
             } else {

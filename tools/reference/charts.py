@@ -19,6 +19,7 @@ ENGINES = [("glassbox", "Glassbox"), ("llamacpp", "llama.cpp"), ("transformers",
 STYLE = """<style>
   .bg { fill: #fbfcfb } .ink { fill: #121413 } .ink2 { fill: #444a46 } .grid { stroke: #dfe3df }
   .glassbox { fill: #c8692e } .llamacpp { fill: #2f72a8 } .transformers { fill: #6f8a2a } .mark { fill: #c92a22 }
+  .base { fill: #444a46 } .base-line { stroke: #444a46 }
   .glassbox-line { stroke: #c8692e } .llamacpp-line { stroke: #2f72a8 } .transformers-line { stroke: #6f8a2a } .mark-line { stroke: #c92a22 }
   text { font-family: Archivo, system-ui, sans-serif; font-variant-numeric: tabular-nums }
   @media (prefers-color-scheme: dark) {
@@ -171,14 +172,18 @@ def serving_charts():
 
 
 def spec_chart():
-    f = os.path.join(ROOT, "speculative.json")
-    if not os.path.exists(f):
+    runs = []
+    for name in ["speculative.json", "speculative-trained.json"]:
+        f = os.path.join(ROOT, name)
+        if os.path.exists(f):
+            runs += json.load(open(f))["runs"]
+    if not runs:
         return
-    d = json.load(open(f))
+    d = {"runs": runs}
     pairs = list(dict.fromkeys(r["pair"] for r in d["runs"]))
-    classes = ["glassbox", "llamacpp", "transformers", "mark"]
+    classes = ["glassbox", "llamacpp", "transformers", "mark", "base", "glassbox"]
     line_chart("speculative.svg", "Speculative decoding: speedup over the target alone", "Greedy, identical output. 1.0 means no gain; below 1 the drafting costs more than it saves.",
-               [(classes[i % 4], p, [(r["k"], r["speedup"]) for r in d["runs"] if r["pair"] == p]) for i, p in enumerate(pairs)],
+               [(classes[i % len(classes)], p, [(r["k"], r["speedup"]) for r in d["runs"] if r["pair"] == p]) for i, p in enumerate(pairs)],
                "tokens drafted per round", "{:.2f}")
 
 

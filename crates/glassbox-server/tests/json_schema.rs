@@ -79,6 +79,14 @@ fn rand_schema(rng: &mut Rng, depth: usize) -> Value {
 }
 
 #[test]
+fn oversized_enums_are_refused() {
+    let vocab = Arc::new(vocab());
+    let trie = Arc::new(Trie::new(vocab.clone(), &vec![false; vocab.len()], 0));
+    let big: Vec<Value> = (0..65).map(|i| json!(i)).collect();
+    assert!(JsonConstraint::new(&json!({ "enum": big }), trie).is_err());
+}
+
+#[test]
 fn two_hundred_random_schemas_always_validate() {
     let vocab = Arc::new(vocab());
     let eos = (vocab.len() - 1) as u32;

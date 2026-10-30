@@ -9,7 +9,7 @@
 //! distribution. Under greedy decoding this reduces to "accept while the
 //! target's argmax agrees", so the output is identical to the target alone.
 
-use crate::sampler::{argmax, Sampler, SamplerConfig};
+use crate::sampler::{Sampler, SamplerConfig};
 use crate::{Generator, Model};
 use serde::Serialize;
 
@@ -45,6 +45,11 @@ impl Stats {
 }
 
 /// Full filtered distribution (dense) for one row of logits.
+/// The greedy choice, after the same penalties the sampler applies.
+fn best(s: &Sampler, logits: &[f32], ctx: &[u32]) -> u32 {
+    s.distribution(logits, ctx)[0].0
+}
+
 fn dense(s: &Sampler, logits: &[f32], ctx: &[u32]) -> Vec<f32> {
     let mut p = vec![0.0; logits.len()];
     for (t, q) in s.distribution(logits, ctx) {
@@ -100,7 +105,7 @@ pub fn generate(
     let mut tokens = prompt.to_vec();
     // The newest token, sampled but not yet fed to either model.
     let mut pending = if greedy {
-        argmax(&t_logits) as u32
+        best(&sampler, &t_logits, &tokens)
     } else {
         sampler.sample(&t_logits, &tokens)
     };
@@ -123,20 +128,22 @@ pub fn generate(
         match (drafter, dg.as_mut()) {
             (Drafter::Model(_), Some(d)) => {
                 let mut l = d.feed(&tokens[d.tokens.len()..], None);
+                // Each draft position's context includes the drafts before it.
+                let mut ctx = tokens.clone();
                 for _ in 0..room {
-                    let qd = if greedy {
-                        Vec::new()
-                    } else {
-                        dense(&sampler, &l, &tokens)
-                    };
+                    let qd = if greedy { Vec::new() } else { dense(&sampler, &l, &ctx) };
                     let x = if greedy {
-                        argmax(&l) as u32
+                        best(&sampler, &l, &ctx)
                     } else {
                         sampler.draw(&qd) as u32
                     };
                     drafted.push(x);
+                    ctx.push(x);
                     q.push(qd);
-                    l = d.feed(&[x], None);
+                    // The last draft's logits would go unused: don't compute them.
+                    if drafted.len() < room {
+                        l = d.feed(&[x], None);
+                    }
                 }
             }
             (Drafter::Lookup { ngram }, _) => drafted = lookup(&tokens, *ngram, room),
@@ -159,21 +166,23 @@ pub fn generate(
 
         let mut accepted = 0;
         let mut next = None;
+        let mut ctx = tokens.clone();
         for (i, &x) in drafted.iter().enumerate() {
-            let ctx = &tokens;
             if greedy {
-                let best = argmax(row(i)) as u32;
-                if best == x {
+                let b = best(&sampler, row(i), &ctx);
+                if b == x {
                     accepted += 1;
+                    ctx.push(x);
                     continue;
                 }
-                next = Some(best);
+                next = Some(b);
                 break;
             }
-            let p = dense(&sampler, row(i), ctx);
+            let p = dense(&sampler, row(i), &ctx);
             let qx = if q.is_empty() { 1.0 } else { q[i][x as usize] };
             if sampler.uniform() * qx < p[x as usize] {
                 accepted += 1;
+                ctx.push(x);
                 continue;
             }
             // Residual distribution max(0, p - q); for lookup q is a point mass on x.
@@ -201,7 +210,7 @@ pub fn generate(
         let next = next.unwrap_or_else(|| {
             let r = row(accepted);
             if greedy {
-                argmax(r) as u32
+                best(&sampler, r, &tokens)
             } else {
                 sampler.draw(&dense(&sampler, r, &tokens)) as u32
             }

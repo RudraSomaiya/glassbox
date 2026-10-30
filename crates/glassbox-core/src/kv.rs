@@ -162,7 +162,9 @@ impl KvCache {
         let seq = &self.seqs[&id];
         let need = (seq.len + n).div_ceil(BLOCK);
         let have = seq.blocks.len();
-        if need > have && need - have > self.free_blocks() {
+        // All or nothing: count the copy-on-write block too before changing anything.
+        let cow = !seq.len.is_multiple_of(BLOCK) && self.refs[seq.blocks[seq.len / BLOCK] as usize] > 1;
+        if need.saturating_sub(have) + cow as usize > self.free_blocks() {
             return Err(OutOfBlocks);
         }
         // Copy-on-write: the block we're about to write into must be ours alone.
@@ -239,6 +241,16 @@ impl KvCache {
         seq.tokens.truncate(len);
         let keep = len.div_ceil(BLOCK);
         let dropped: Vec<u32> = seq.blocks.drain(keep..).collect();
+        // The last kept block is partial now and will be overwritten. If only
+        // we hold it, its registered prefix hash no longer describes it.
+        if !len.is_multiple_of(BLOCK) {
+            let b = seq.blocks[len / BLOCK] as usize;
+            if self.refs[b] == 1 {
+                if let Some(h) = self.block_hash[b].take() {
+                    self.by_hash.remove(&h);
+                }
+            }
+        }
         for b in dropped {
             self.release(b);
         }
@@ -301,6 +313,24 @@ mod tests {
         kv.remove_seq(1);
         kv.check_invariants();
         assert_eq!(kv.used_blocks(), 0);
+    }
+
+    /// A full, hashed block that is truncated into and rewritten must stop
+    /// being offered for the old prefix (speculative decoding does this).
+    #[test]
+    fn truncate_unregisters_a_rewritten_block() {
+        let mut kv = KvCache::new(1, 1, 8);
+        let old: Vec<u32> = (0..16).collect();
+        kv.add_seq(0, &[]);
+        kv.reserve(0, 16).unwrap();
+        kv.commit(0, &old);
+        kv.truncate(0, 10);
+        kv.reserve(0, 6).unwrap();
+        kv.commit(0, &[90, 91, 92, 93, 94, 95]);
+        let mut again = old.clone();
+        again.push(7);
+        assert_eq!(kv.add_seq(1, &again), 0, "stale block was reused");
+        kv.check_invariants();
     }
 
     #[test]

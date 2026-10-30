@@ -251,7 +251,7 @@ impl<'a> Gguf<'a> {
             infos.push((name, dims, ty, off));
         }
         let align = match meta.get("general.alignment") {
-            Some(Meta::Num(a)) => *a as usize,
+            Some(Meta::Num(a)) if *a >= 1.0 => *a as usize,
             _ => 32,
         };
         let data = r.at.div_ceil(align) * align;

@@ -103,6 +103,11 @@
   height: 0.8em;
   opacity: 0.8;
 }
+.glyph-sp {
+  width: 0.9em;
+  height: 0.6em;
+  opacity: 0.8;
+}
 .glyph-empty {
   display: inline-block;
   width: 0.3em;
@@ -128,6 +133,22 @@
     0 2px 6px rgb(0 0 0 / 0.12);
   animation: loupe-in var(--standard) var(--ease) both;
 }
+.loupe__close {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.loupe__close:hover {
+  color: var(--mark);
+}
 .loupe--flip {
   left: auto;
   right: 0;
@@ -150,7 +171,8 @@
   outline: 3px solid var(--film-edge);
   outline-offset: -9px;
   overflow: hidden;
-  font-size: 1.6rem;
+  /* Shrink long tokens to fit the lens. */
+  font-size: clamp(0.8rem, calc(5.2rem / var(--len)), 1.6rem);
   font-weight: 700;
   white-space: pre;
 }
@@ -235,17 +257,19 @@
     font-size: 1rem;
     padding: 0 5px;
   }
+  /* On a phone the loupe is a sheet over the bottom of the screen. */
   .loupe {
-    position: sticky;
-    bottom: 0;
-    left: 0;
+    position: fixed;
+    inset: auto 0 0 0;
     width: 100%;
-    margin-top: 12px;
+    max-height: 55vh;
+    overflow-y: auto;
     grid-template-columns: 64px 1fr;
+    z-index: 20;
   }
   .loupe__lens {
     width: 64px;
     height: 64px;
-    font-size: 1.1rem;
+    font-size: clamp(0.7rem, calc(3.4rem / var(--len)), 1.1rem);
   }
 }
